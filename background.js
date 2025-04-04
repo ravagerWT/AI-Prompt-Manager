@@ -4,8 +4,7 @@
 chrome.runtime.onInstalled.addListener(details => {
   console.log("AI 提示詞管理助手已安裝或更新。", details.reason);
 
-  // 可以在這裡設置一些初始的儲存值，如果需要的話
-  // 例如，確保 prompts 鍵存在
+  // 初始化儲存空間 (保持不變)
   chrome.storage.local.get('prompts', result => {
     if (result.prompts === undefined) {
       chrome.storage.local.set({ prompts: [] }, () => {
@@ -14,20 +13,42 @@ chrome.runtime.onInstalled.addListener(details => {
     }
   });
 
-   // 如果是首次安裝，可以選擇自動打開側邊欄 (但預設點擊圖標就會開)
-   // if (details.reason === 'install') {
-   //    chrome.sidePanel.open({ windowId: window.id }); // 需要獲取當前窗口 ID
-   // }
-
-   // 創建右鍵選單範例 (如果需要)
-   /*
-   chrome.contextMenus.create({
-       id: "saveSelectedTextAsPrompt",
-       title: "將選取文字儲存為提示詞",
-       contexts: ["selection"] // 僅在選取文字時顯示
-   });
-   */
+  // 如果有創建右鍵選單，相關代碼保持不變
+  /*
+  chrome.contextMenus.create({ ... });
+  */
 });
+
+// *** 新增：監聽工具列圖示點擊事件 ***
+chrome.action.onClicked.addListener((tab) => {
+  // tab 參數包含了被點擊時所在的標籤頁資訊，包括 windowId
+  console.log("插件圖示被點擊，嘗試開啟側邊欄。 Tab ID:", tab.id, "Window ID:", tab.windowId);
+  if (tab.windowId) {
+      // 使用 windowId 來指定在哪個視窗開啟側邊欄
+      chrome.sidePanel.open({ windowId: tab.windowId })
+          .then(() => {
+              console.log("chrome.sidePanel.open() 調用成功。");
+          })
+          .catch((error) => {
+              // 添加錯誤處理，以防萬一
+              console.error("開啟側邊欄時發生錯誤:", error);
+              // 例如，如果用戶正在使用一個不支持側邊欄的視窗類型 (如畫中畫)
+          });
+  } else {
+       console.error("無法獲取點擊事件的 windowId，無法開啟側邊欄。");
+       // 這種情況比較少見，但作為健壯性檢查
+  }
+});
+
+// 如果有監聽右鍵選單點擊事件，相關代碼保持不變
+/*
+chrome.contextMenus.onClicked.addListener((info, tab) => { ... });
+*/
+
+// 如果有監聽來自其他腳本的訊息，相關代碼保持不變
+/*
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => { ... });
+*/
 
 // 監聽工具列圖示點擊事件 (如果需要自訂行為，但預設已綁定 sidePanel)
 // chrome.action.onClicked.addListener((tab) => {
