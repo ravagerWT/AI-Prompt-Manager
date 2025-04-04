@@ -230,153 +230,103 @@ function renderPromptListView(promptsToRender) {
  * @returns {HTMLElement} - 代表列表項的 li 元素
  */
 function createPromptListItem(prompt) {
-  const li = document.createElement('li');
-  li.className = `prompt-item ${prompt.isDeleted ? 'deleted' : ''} ${isSelectionMode ? 'selection-mode' : ''}`;
-  li.dataset.id = prompt.id;
-
-  let innerHTML = '';
-
-  // 如果是選擇模式，添加 checkbox
-  if (isSelectionMode) {
-    innerHTML += `<input type="checkbox" class="prompt-select-checkbox" data-id="${prompt.id}" ${selectedPromptIds.has(prompt.id) ? 'checked' : ''}>`;
+    const li = document.createElement('li');
+    li.className = `prompt-item ${prompt.isDeleted ? 'deleted' : ''} ${isSelectionMode ? 'selection-mode' : ''}`;
+    li.dataset.id = prompt.id;
+  
+    let innerHTML = '';
+  
+    // 如果是選擇模式，添加 checkbox
+    if (isSelectionMode) {
+      // *** 添加 data-prompt-title 以便確認框顯示名稱 (如果需要的話) ***
+      innerHTML += `<input type="checkbox" class="prompt-select-checkbox" data-id="${prompt.id}" data-prompt-title="${prompt.title}" ${selectedPromptIds.has(prompt.id) ? 'checked' : ''}>`;
+    }
+  
+    innerHTML += `<div class="prompt-details">`;
+    // ... (省略其他按鈕和內容的 HTML 構建) ...
+    // (原有的 header, meta, preview, actions 等保持不變)
+     innerHTML += `
+      <div class="prompt-header">
+        <span class="prompt-title">${prompt.title}</span>
+        ${!isSelectionMode ? `
+          <div class="prompt-actions">
+            ${prompt.isDeleted ? `
+              <button class="icon-button recover-button" title="復原">R</button>
+              <button class="icon-button perm-delete-button danger" title="永久刪除">X</button>
+            ` : `
+              <button class="icon-button copy-button" title="複製內容">C</button>
+              <button class="icon-button insert-button" title="插入到頁面">I</button>
+              <button class="icon-button duplicate-button" title="建立副本">D</button>
+              <button class="icon-button export-button" title="匯出此項">E</button>
+              <button class="icon-button delete-button danger" title="移至垃圾桶">T</button>
+            `}
+          </div>
+        ` : ''}
+      </div>
+      <div class="prompt-meta">
+          ${(prompt.tags && prompt.tags.length > 0) ? `<span class="tags">標籤: ${prompt.tags.map(tag => `<span>${tag}</span>`).join(' ')}</span> | ` : ''}
+          <span class="timestamp">修改: ${formatDateTime(prompt.updatedAt)} | 建於: ${formatDateTime(prompt.createdAt)}</span>
+      </div>
+      ${(!prompt.isDeleted && prompt.content) ? `<div class="prompt-content-preview">${prompt.content}</div>` : ''}
+    `;
+     innerHTML += `</div>`; // 結束 .prompt-details
+  
+    li.innerHTML = innerHTML;
+  
+    // --- 為列表項內的元素添加事件監聽器 ---
+    // ... (省略其他按鈕的事件監聽器) ...
+  
+    // Checkbox (選擇模式下)
+    const checkbox = li.querySelector('.prompt-select-checkbox');
+    if (checkbox) {
+         checkbox.addEventListener('change', (e) => {
+             const id = e.target.dataset.id;
+             if (e.target.checked) {
+                 selectedPromptIds.add(id);
+             } else {
+                 selectedPromptIds.delete(id);
+             }
+             console.log("Selected IDs:", selectedPromptIds); // 調試用日誌
+  
+             // *** 新增：更新計數器 ***
+             updateDeleteSelectedButtonCount();
+         });
+     }
+  
+     // ... (確保其他按鈕監聽器，如複製、插入、刪除等，都在這裡正確添加) ...
+       // 複製按鈕
+     const copyBtn = li.querySelector('.copy-button');
+     if (copyBtn) { copyBtn.addEventListener('click', (e) => { e.stopPropagation(); handleCopyPrompt(prompt.id, prompt.content); }); }
+     // 插入按鈕
+     const insertBtn = li.querySelector('.insert-button');
+     if (insertBtn) { insertBtn.addEventListener('click', (e) => { e.stopPropagation(); handleInsertPrompt(prompt.content); }); }
+     // 刪除 (移至垃圾桶) 按鈕
+     const deleteBtn = li.querySelector('.delete-button');
+     if (deleteBtn) { deleteBtn.addEventListener('click', async (e) => { e.stopPropagation(); if (await showConfirm(`確定要將提示詞「${prompt.title}」移至垃圾桶嗎？`)) { await movePromptToTrash(prompt.id); } }); }
+     // 建立副本按鈕
+     const duplicateBtn = li.querySelector('.duplicate-button');
+     if (duplicateBtn) { duplicateBtn.addEventListener('click', async (e) => { e.stopPropagation(); await duplicatePrompt(prompt.id); }); }
+     // 匯出單項按鈕
+     const exportBtn = li.querySelector('.export-button');
+     if (exportBtn) { exportBtn.addEventListener('click', (e) => { e.stopPropagation(); handleExportPrompts([prompt]); }); }
+     // 復原按鈕 (垃圾桶內)
+     const recoverBtn = li.querySelector('.recover-button');
+     if (recoverBtn) { recoverBtn.addEventListener('click', async (e) => { e.stopPropagation(); await recoverPromptFromTrash(prompt.id); }); }
+     // 永久刪除按鈕 (垃圾桶內)
+     const permDeleteBtn = li.querySelector('.perm-delete-button');
+     if (permDeleteBtn) { permDeleteBtn.addEventListener('click', async (e) => { e.stopPropagation(); if (await showConfirm(`確定要永久刪除提示詞「${prompt.title}」嗎？此操作無法復原。`)) { await permanentlyDeletePrompts([prompt.id]); } }); }
+      // 點擊非按鈕區域觸發編輯 (僅對非垃圾桶項目且非選擇模式有效)
+     const detailsDiv = li.querySelector('.prompt-details');
+     if (detailsDiv && !prompt.isDeleted && !isSelectionMode) {
+         detailsDiv.addEventListener('click', (e) => {
+             if (!e.target.closest('.prompt-actions button') && !e.target.closest('.prompt-select-checkbox')) { // 確保點擊的不是按鈕或 checkbox
+                 openPromptForm(prompt);
+             }
+         });
+     }
+  
+    return li;
   }
-
-   innerHTML += `<div class="prompt-details">`; // 包裹主要內容，用於 flex 佈局
-   innerHTML += `
-    <div class="prompt-header">
-      <span class="prompt-title">${prompt.title}</span>
-      <!-- 非選擇模式下才顯示右側操作按鈕 -->
-      ${!isSelectionMode ? `
-        <div class="prompt-actions">
-          ${prompt.isDeleted ? `
-            <button class="icon-button recover-button" title="復原">R</button> <!-- 復原圖標 -->
-            <button class="icon-button perm-delete-button danger" title="永久刪除">X</button> <!-- 永久刪除圖標 -->
-          ` : `
-            <button class="icon-button copy-button" title="複製內容">C</button> <!-- 複製圖標 -->
-            <button class="icon-button insert-button" title="插入到頁面">I</button> <!-- 插入圖標 -->
-            <button class="icon-button duplicate-button" title="建立副本">D</button> <!-- 副本圖標 -->
-            <button class="icon-button export-button" title="匯出此項">E</button> <!-- 匯出圖標 -->
-            <button class="icon-button delete-button danger" title="移至垃圾桶">T</button> <!-- 垃圾桶圖標 -->
-          `}
-        </div>
-      ` : ''}
-    </div>
-  `;
-
-  // 顯示元數據 (標籤和時間)
-  innerHTML += `<div class="prompt-meta">`;
-  if (prompt.tags && prompt.tags.length > 0) {
-      innerHTML += `<span class="tags">標籤: ${prompt.tags.map(tag => `<span>${tag}</span>`).join(' ')}</span> | `;
-  }
-  innerHTML += `<span class="timestamp">修改: ${formatDateTime(prompt.updatedAt)} | 建於: ${formatDateTime(prompt.createdAt)}</span>`;
-  innerHTML += `</div>`;
-
-  // 顯示內容預覽 (如果非垃圾桶項目)
-  if (!prompt.isDeleted && prompt.content) {
-       innerHTML += `<div class="prompt-content-preview">${prompt.content}</div>`;
-   }
-
-   innerHTML += `</div>`; // 結束 .prompt-details
-
-  li.innerHTML = innerHTML;
-
-  // --- 為列表項內的元素添加事件監聽器 ---
-
-  // 點擊非按鈕區域觸發編輯 (僅對非垃圾桶項目且非選擇模式有效)
-   const detailsDiv = li.querySelector('.prompt-details');
-   if (detailsDiv && !prompt.isDeleted && !isSelectionMode) {
-       detailsDiv.addEventListener('click', (e) => {
-           // 確保點擊的不是按鈕本身
-           if (!e.target.closest('.prompt-actions button')) {
-               openPromptForm(prompt); // 傳入 prompt 物件以進行編輯
-           }
-       });
-   }
-
-   // 複製按鈕
-   const copyBtn = li.querySelector('.copy-button');
-   if (copyBtn) {
-       copyBtn.addEventListener('click', (e) => {
-           e.stopPropagation(); // 防止觸發編輯
-           handleCopyPrompt(prompt.id, prompt.content);
-       });
-   }
-
-   // 插入按鈕
-   const insertBtn = li.querySelector('.insert-button');
-   if (insertBtn) {
-       insertBtn.addEventListener('click', (e) => {
-           e.stopPropagation();
-           handleInsertPrompt(prompt.content);
-       });
-   }
-
-   // 刪除 (移至垃圾桶) 按鈕
-   const deleteBtn = li.querySelector('.delete-button');
-   if (deleteBtn) {
-       deleteBtn.addEventListener('click', async (e) => {
-           e.stopPropagation();
-           if (await showConfirm(`確定要將提示詞「${prompt.title}」移至垃圾桶嗎？`)) {
-               await movePromptToTrash(prompt.id);
-           }
-       });
-   }
-
-   // 建立副本按鈕
-   const duplicateBtn = li.querySelector('.duplicate-button');
-   if (duplicateBtn) {
-       duplicateBtn.addEventListener('click', async (e) => {
-           e.stopPropagation();
-           await duplicatePrompt(prompt.id);
-       });
-   }
-
-   // 匯出單項按鈕
-   const exportBtn = li.querySelector('.export-button');
-   if (exportBtn) {
-       exportBtn.addEventListener('click', (e) => {
-           e.stopPropagation();
-           handleExportPrompts([prompt]); // 傳遞包含單個 prompt 的陣列
-       });
-   }
-
-   // 復原按鈕 (垃圾桶內)
-   const recoverBtn = li.querySelector('.recover-button');
-   if (recoverBtn) {
-       recoverBtn.addEventListener('click', async (e) => {
-           e.stopPropagation();
-           await recoverPromptFromTrash(prompt.id);
-       });
-   }
-
-   // 永久刪除按鈕 (垃圾桶內)
-   const permDeleteBtn = li.querySelector('.perm-delete-button');
-   if (permDeleteBtn) {
-       permDeleteBtn.addEventListener('click', async (e) => {
-           e.stopPropagation();
-           if (await showConfirm(`確定要永久刪除提示詞「${prompt.title}」嗎？此操作無法復原。`)) {
-               await permanentlyDeletePrompts([prompt.id]);
-           }
-       });
-   }
-
-   // Checkbox (選擇模式下)
-   const checkbox = li.querySelector('.prompt-select-checkbox');
-   if (checkbox) {
-       checkbox.addEventListener('change', (e) => {
-           const id = e.target.dataset.id;
-           if (e.target.checked) {
-               selectedPromptIds.add(id);
-           } else {
-               selectedPromptIds.delete(id);
-           }
-           // console.log("已選取 IDs:", selectedPromptIds); // 調試用
-       });
-   }
-
-
-  return li;
-}
 
 
 /**
@@ -501,22 +451,47 @@ function renderTagsView(activePrompts) {
     console.log('Prompt list rendered in tags view.');
 }
 
+/**
+ * 用於更新「永久刪除選取項目」按鈕計數的輔助函數
+ */
+function updateDeleteSelectedButtonCount() {
+    // 確保我們在垃圾桶的選擇模式下
+    if (currentTab === 'trash' && isSelectionMode) {
+        const deleteSelectedButton = document.getElementById('perm-delete-selected');
+        if (deleteSelectedButton) {
+            const count = selectedPromptIds.size;
+            deleteSelectedButton.textContent = `永久刪除選取項目 (${count})`;
+            // 同步更新按鈕的禁用狀態
+            deleteSelectedButton.disabled = count === 0;
+        }
+    }
+     // *** 同步更新部分匯出按鈕的計數 (如果也在選擇模式下) ***
+     else if (currentTab === 'import-export' && isSelectionMode) {
+         const exportSelectedButton = document.getElementById('confirm-partial-export');
+         if (exportSelectedButton) {
+             const count = selectedPromptIds.size;
+             exportSelectedButton.textContent = `匯出選取項目 (${count})`;
+             exportSelectedButton.disabled = count === 0;
+         }
+     }
+}
 
 /**
  * 渲染垃圾桶視圖
  * @param {Array} deletedPrompts - 所有已刪除的提示詞
  */
 function renderTrashView(deletedPrompts) {
-    contentArea.innerHTML = ''; // 清空
+    contentArea.innerHTML = '';
 
-    // 1. 渲染頂部操作按鈕
     const actionsContainer = document.createElement('div');
     actionsContainer.className = 'trash-actions';
-    actionsContainer.id = 'trash-actions-container'; // 給一個ID方便查找替換
+    actionsContainer.id = 'trash-actions-container';
 
     if (isSelectionMode) {
+        // *** 初始渲染時也使用輔助函數更新計數和狀態 ***
+        const initialCount = selectedPromptIds.size; // 通常是 0
         actionsContainer.innerHTML = `
-            <button id="perm-delete-selected" class="danger">永久刪除選取項目 (${selectedPromptIds.size})</button>
+            <button id="perm-delete-selected" class="danger" ${initialCount === 0 ? 'disabled' : ''}>永久刪除選取項目 (${initialCount})</button>
             <button id="cancel-selection">取消</button>
         `;
         actionsContainer.querySelector('#perm-delete-selected').addEventListener('click', handlePermanentDeleteSelected);
@@ -533,17 +508,15 @@ function renderTrashView(deletedPrompts) {
     }
     contentArea.appendChild(actionsContainer);
 
-    // 2. 渲染已刪除的提示詞列表
+    // ... (渲染列表的邏輯保持不變) ...
     const list = document.createElement('ul');
-    list.className = 'prompt-list trash-list'; // 添加 trash-list 類名用於特定樣式
-
+    list.className = 'prompt-list trash-list';
     if (deletedPrompts.length === 0) {
         list.innerHTML = '<li class="empty-message">垃圾桶是空的。</li>';
     } else {
-        // 在渲染列表項之前應用當前排序
         const sortedDeletedPrompts = sortPrompts(deletedPrompts, currentSort);
         sortedDeletedPrompts.forEach(prompt => {
-            const listItem = createPromptListItem(prompt); // 使用通用函數創建列表項
+            const listItem = createPromptListItem(prompt);
             list.appendChild(listItem);
         });
     }
@@ -1154,60 +1127,56 @@ function handleExportAll() {
  * 進入部分匯出模式
  */
 function enterPartialExportMode() {
-    isSelectionMode = true; // 借用垃圾桶的選擇模式標記
-    selectedPromptIds.clear(); // 清空之前的選擇
+    isSelectionMode = true; // 進入選擇模式
+    selectedPromptIds.clear(); // 清空選擇
 
-    // 隱藏常規匯出按鈕，顯示列表和確認/取消按鈕
     document.getElementById('export-actions').classList.add('hidden');
     const listContainer = document.getElementById('partial-export-list-container');
     listContainer.classList.remove('hidden');
     const listElement = document.getElementById('partial-export-list');
-    listElement.innerHTML = '<div class="loading">載入提示詞...</div>'; // 清空並顯示載入
+    listElement.innerHTML = '<div class="loading">載入提示詞...</div>';
 
-    // 獲取並渲染未刪除的提示詞列表（帶 checkbox）
     const activePrompts = sortPrompts(allPrompts.filter(p => !p.isDeleted), currentSort);
-    listElement.innerHTML = ''; // 再次清空
+    listElement.innerHTML = '';
 
-    if (activePrompts.length === 0) {
-        listElement.innerHTML = '<li class="empty-message">沒有可供選擇的提示詞。</li>';
-        // 禁用確認匯出按鈕
-        const confirmBtn = listContainer.querySelector('#confirm-partial-export');
-        if(confirmBtn) confirmBtn.disabled = true;
-    } else {
-        activePrompts.forEach(prompt => {
-            // 設置 isSelectionMode 為 true 來渲染帶 checkbox 的列表項
-            const listItem = createPromptListItem(prompt);
-            listElement.appendChild(listItem);
-        });
-         // 確保確認按鈕可用
-        const confirmBtn = listContainer.querySelector('#confirm-partial-export');
-        if(confirmBtn) confirmBtn.disabled = false;
-    }
-
-
-    // 添加確認和取消按鈕的事件監聽器 (如果尚未添加)
     const confirmBtn = listContainer.querySelector('#confirm-partial-export');
     const cancelBtn = listContainer.querySelector('#cancel-partial-export');
 
-    // 移除舊監聽器再添加，防止重複綁定
+    if (activePrompts.length === 0) {
+        listElement.innerHTML = '<li class="empty-message">沒有可供選擇的提示詞。</li>';
+        if(confirmBtn) confirmBtn.disabled = true;
+    } else {
+        activePrompts.forEach(prompt => {
+            const listItem = createPromptListItem(prompt); // isSelectionMode=true 會渲染 checkbox
+            listElement.appendChild(listItem);
+        });
+        if(confirmBtn) confirmBtn.disabled = true; // 初始狀態下沒有選中，禁用按鈕
+    }
+
+    // *** 更新初始按鈕文字和狀態 ***
+     if (confirmBtn) {
+        confirmBtn.textContent = `匯出選取項目 (0)`; // 初始計數為 0
+     }
+
+    // 重新綁定事件監聽器
     confirmBtn.replaceWith(confirmBtn.cloneNode(true));
     cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-
     listContainer.querySelector('#confirm-partial-export').addEventListener('click', handleConfirmPartialExport);
     listContainer.querySelector('#cancel-partial-export').addEventListener('click', exitPartialExportMode);
-
 }
 
 /**
  * 退出部分匯出模式
  */
 function exitPartialExportMode() {
-    isSelectionMode = false;
-    selectedPromptIds.clear();
+    // 退出選擇模式的邏輯已包含在 exitSelectionMode 中
+    // 只需處理界面元素的顯示/隱藏
     document.getElementById('export-actions').classList.remove('hidden');
     const listContainer = document.getElementById('partial-export-list-container');
     listContainer.classList.add('hidden');
-    listContainer.querySelector('#partial-export-list').innerHTML = ''; // 清空列表
+    listContainer.querySelector('#partial-export-list').innerHTML = '';
+     // 調用通用的退出選擇模式函數
+     exitSelectionMode();
 }
 
 /**
@@ -1352,16 +1321,15 @@ async function handleImportFile(event) {
  * 進入垃圾桶的選擇模式
  */
 function enterSelectionMode() {
-    if (currentTab !== 'trash' && currentTab !== 'import-export') {
-        console.warn("非垃圾桶或匯出頁面，無法進入選擇模式");
+    if (currentTab !== 'trash') { // 簡化：僅處理垃圾桶頁籤
+        console.warn("非垃圾桶頁面，無法進入選擇模式");
         return;
     }
-     if (currentTab === 'trash') {
-        isSelectionMode = true;
-        selectedPromptIds.clear();
-        renderTrashView(allPrompts.filter(p => p.isDeleted)); // 重新渲染垃圾桶視圖以顯示 checkbox 和按鈕
-     }
-     // 部分匯出的選擇模式由 enterPartialExportMode 處理
+    isSelectionMode = true;
+    selectedPromptIds.clear(); // 進入時清空選擇
+    // 重新渲染垃圾桶視圖，會顯示 checkbox 和正確的初始按鈕狀態(計數0, disabled)
+    renderTrashView(allPrompts.filter(p => p.isDeleted));
+    // *** 無需在此處調用 updateDeleteSelectedButtonCount，因為 renderTrashView 已處理初始狀態 ***
 }
 
 /**
@@ -1369,15 +1337,15 @@ function enterSelectionMode() {
  */
 function exitSelectionMode() {
     if (isSelectionMode) {
+        const wasTrashTab = currentTab === 'trash'; // 記錄是否在垃圾桶頁籤
         isSelectionMode = false;
-        selectedPromptIds.clear();
-        if (currentTab === 'trash') {
+        selectedPromptIds.clear(); // 退出時清空選擇
+        if (wasTrashTab) {
             renderTrashView(allPrompts.filter(p => p.isDeleted)); // 重新渲染垃圾桶
         } else if (currentTab === 'import-export') {
-             exitPartialExportMode(); // 匯出頁面使用特定退出函數
-        } else {
-            renderCurrentView(); // 其他頁面正常刷新
+             exitPartialExportMode();
         }
+        // 不需要全局 renderCurrentView，只刷新受影響的頁籤
     }
 }
 
@@ -1386,16 +1354,23 @@ function exitSelectionMode() {
  * 處理點擊「永久刪除選取項目」按鈕
  */
 async function handlePermanentDeleteSelected() {
-    if (selectedPromptIds.size === 0) {
+    const count = selectedPromptIds.size; // 使用 size 屬性
+    if (count === 0) {
         showToast("請先選擇要永久刪除的提示詞", "info");
         return;
     }
 
-    if (await showConfirm(`確定要永久刪除選取的 ${selectedPromptIds.size} 個提示詞嗎？此操作無法復原。`)) {
+    // 可選：獲取選中項目的標題用於確認信息
+    // const titles = Array.from(selectedPromptIds).map(id => allPrompts.find(p=>p.id===id)?.title || '未知項').join(', ');
+    // if (await showConfirm(`確定要永久刪除選取的 ${count} 個提示詞 (${titles}) 嗎？此操作無法復原。`)) {
+
+    if (await showConfirm(`確定要永久刪除選取的 ${count} 個提示詞嗎？此操作無法復原。`)) {
         await permanentlyDeletePrompts(Array.from(selectedPromptIds));
-        // permanentlyDeletePrompts 內部會調用 exitSelectionMode 並刷新視圖
+        // permanentlyDeletePrompts 內部目前會調用 exitSelectionMode，
+        // exitSelectionMode 會清空 selectedPromptIds 並調用 renderTrashView 刷新
     }
 }
+
 
 /**
  * 處理點擊「清空垃圾桶」按鈕
