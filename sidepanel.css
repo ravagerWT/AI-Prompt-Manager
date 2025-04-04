@@ -138,24 +138,32 @@ main#content-area {
 }
 
 .prompt-item {
+    /* ... (樣式保持不變: flex, align-items, background, border, etc.) ... */
     background-color: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
     margin-bottom: 10px;
     padding: 12px 15px;
-    /* cursor: pointer;  <-- 將 cursor:pointer 移到 .prompt-details 上可能更好 */
     transition: box-shadow 0.2s ease-in-out;
-    display: flex; /* 為了讓 checkbox 和 details 並排 */
-    align-items: flex-start; /* 頂部對齊 */
+    display: flex;
+    align-items: flex-start;
 }
 .prompt-item:hover {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+.prompt-item.deleted {
+    background-color: #fef2f2;
+    opacity: 0.8;
+}
+.prompt-item.deleted .prompt-title {
+     text-decoration: line-through;
+}
+
 /* Checkbox 樣式 (如果需要調整間距) */
 .prompt-item.selection-mode input[type="checkbox"] {
     margin-right: 10px;
-    margin-top: 2px; /* 微調垂直對齊 */
+    margin-top: 2px;
     flex-shrink: 0;
 }
 
@@ -186,21 +194,8 @@ main#content-area {
     overflow: hidden;
     text-overflow: ellipsis;
     flex-grow: 1; /* 標題佔滿 header 的可用寬度 */
+    display: block;
     /* margin-right: 10px; <-- 如果 header 內沒有其他元素了，這個可以移除 */
-}
-
-.prompt-meta {
-    font-size: 0.8em;
-    color: #6b7280;
-    margin-bottom: 8px; /* 與下方預覽或按鈕的間距 */
-}
-.prompt-meta .tags span {
-    background-color: #e0e7ff;
-    color: #4338ca;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-right: 4px;
-    font-size: 0.9em;
 }
 
 .prompt-content-preview {
@@ -215,12 +210,38 @@ main#content-area {
      margin-bottom: 10px; /* 與下方按鈕的間距 */
 }
 
+/* 3. 標籤 */
+.prompt-tags {
+    margin-bottom: 8px; /* 與下方時間戳的間距 */
+}
+.prompt-tags span { /* 沿用之前的標籤樣式 */
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-right: 4px;
+    font-size: 0.85em; /* 稍微調整字體大小 */
+    display: inline-block; /* 確保 margin 生效 */
+    line-height: 1.4;
+}
+
+/* 4. 時間戳 */
+.prompt-timestamps {
+    font-size: 0.8em;
+    color: #6b7280;
+    margin-bottom: 12px; /* 與下方按鈕區的間距 */
+}
+.prompt-timestamps .timestamp-label {
+    /* font-weight: 500; */ /* 可選：標籤加粗一點 */
+    color: #4b5563;
+}
+
 .prompt-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap; /* 按鈕多時換行 */
     justify-content: flex-end; /* 按鈕預設靠右對齊 */
-    margin-top: 12px; /* *** 添加與上方內容的間距 *** */
+    margin-top: 0; /* *** 添加與上方內容的間距 *** */
     /* border-top: 1px solid #f3f4f6; */ /* 可選：添加細微的分隔線 */
     /* padding-top: 8px; */ /* 可選：分隔線與按鈕的間距 */
 }

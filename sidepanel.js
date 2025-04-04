@@ -235,24 +235,19 @@ function createPromptListItem(prompt) {
     li.dataset.id = prompt.id;
 
     let checkboxHTML = '';
-    // 如果是選擇模式，準備 checkbox HTML
     if (isSelectionMode) {
         checkboxHTML = `<input type="checkbox" class="prompt-select-checkbox" data-id="${prompt.id}" data-prompt-title="${prompt.title}" ${selectedPromptIds.has(prompt.id) ? 'checked' : ''}>`;
     }
 
-    // --- 準備按鈕區的 HTML ---
     let actionsHTML = '';
-    // 只有在非選擇模式下才顯示按鈕
     if (!isSelectionMode) {
-        actionsHTML = `<div class="prompt-actions">`; // 按鈕容器
+        actionsHTML = `<div class="prompt-actions">`;
         if (prompt.isDeleted) {
-            // 垃圾桶內的按鈕
             actionsHTML += `
                 <button class="icon-button recover-button" title="復原">復</button>
                 <button class="icon-button perm-delete-button danger" title="永久刪除">除</button>
             `;
         } else {
-            // 非垃圾桶的按鈕
             actionsHTML += `
                 <button class="icon-button copy-button" title="複製內容">複</button>
                 <button class="icon-button insert-button" title="插入到頁面">插</button>
@@ -261,25 +256,35 @@ function createPromptListItem(prompt) {
                 <button class="icon-button delete-button danger" title="移至垃圾桶">刪</button>
             `;
         }
-        actionsHTML += `</div>`; // 結束按鈕容器
+        actionsHTML += `</div>`;
     }
 
-    // --- 構建主要的 innerHTML ---
-    // 包含 checkbox (如果在選擇模式) 和主要的 prompt-details div
+    // --- 構建新的順序 ---
     li.innerHTML = `
         ${checkboxHTML}
         <div class="prompt-details">
+            <!-- 1. 提示詞標題 -->
             <div class="prompt-header">
                 <span class="prompt-title">${prompt.title}</span>
-                <!-- 按鈕區已移出 Header -->
             </div>
-            <div class="prompt-meta">
-                ${(prompt.tags && prompt.tags.length > 0) ? `<span class="tags">標籤: ${prompt.tags.map(tag => `<span>${tag}</span>`).join(' ')}</span> | ` : ''}
-                <span class="timestamp">修改: ${formatDateTime(prompt.updatedAt)} | 建於: ${formatDateTime(prompt.createdAt)}</span>
-            </div>
+
+            <!-- 2. 提示詞內容 (預覽，僅非垃圾桶) -->
             ${(!prompt.isDeleted && prompt.content) ? `<div class="prompt-content-preview">${prompt.content}</div>` : ''}
 
-            <!-- *** 將按鈕區 HTML 插入到這裡 *** -->
+            <!-- 3. 標籤 (如果存在) -->
+            ${(prompt.tags && prompt.tags.length > 0) ? `
+                <div class="prompt-tags">
+                    ${prompt.tags.map(tag => `<span>${tag}</span>`).join(' ')}
+                </div>
+            ` : ''}
+
+            <!-- 4. 修改及建立日期時間 -->
+            <div class="prompt-timestamps">
+                <span class="timestamp-label">修改:</span> ${formatDateTime(prompt.updatedAt)} |
+                <span class="timestamp-label">建於:</span> ${formatDateTime(prompt.createdAt)}
+            </div>
+
+            <!-- 5. 互動按鈕 -->
             ${actionsHTML}
         </div>
     `;
