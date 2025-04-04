@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 提示詞管理助手</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI 提示詞管理助手</h1>
+            <div class="search-container">
+                <input type="search" id="search-input" placeholder="搜尋標題、內容、標籤...">
+                <button id="sort-button" class="icon-button" title="排序">S</button> <!-- 暫用文字代替圖標 -->
+                <div id="sort-options" class="sort-options hidden">
+                    <button data-sort="updatedAt_desc">最近新增/修改</button>
+                    <button data-sort="createdAt_desc">建立時間 (新→舊)</button>
+                    <button data-sort="createdAt_asc">建立時間 (舊→新)</button>
+                    <button data-sort="updatedAt_desc_specific">修改時間 (新→舊)</button>
+                    <button data-sort="updatedAt_asc">修改時間 (舊→新)</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="tab-bar">
+            <button class="tab-button active" data-tab="prompts">📖 提示詞</button>
+            <button class="tab-button" data-tab="add">➕ 新增提示詞</button>
+            <button class="tab-button" data-tab="tags">#️⃣ 標籤</button>
+            <button class="tab-button" data-tab="trash">🗑️ 垃圾桶</button>
+            <button class="tab-button" data-tab="import-export">↔️ 匯入/匯出</button>
+        </nav>
+
+        <main id="content-area">
+            <!-- 內容將由 JavaScript 動態載入 -->
+            <div class="loading">載入中...</div>
+        </main>
+
+        <!-- 新增/編輯 提示詞的表單 (初始隱藏) -->
+        <div id="prompt-form-container" class="modal hidden">
+             <form id="prompt-form">
+                <h2 id="form-title">新增提示詞</h2>
+                <input type="hidden" id="prompt-id">
+                <div>
+                    <label for="prompt-title">標題 <span class="required">*</span></label>
+                    <input type="text" id="prompt-title" required>
+                </div>
+                <div>
+                    <label for="prompt-purpose">用途描述</label>
+                    <textarea id="prompt-purpose" rows="3"></textarea>
+                </div>
+                <div>
+                    <label for="prompt-content">內容 <span class="required">*</span></label>
+                    <textarea id="prompt-content" rows="8" required></textarea>
+                </div>
+                <div>
+                    <label for="prompt-tags">標籤 (用 # 分隔, 例如: #寫作#翻譯)</label>
+                    <input type="text" id="prompt-tags" placeholder="#標籤一#標籤二">
+                    <div id="tag-suggestions" class="tag-suggestions"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="save-prompt-button">儲存</button>
+                    <button type="button" id="cancel-prompt-button">放棄</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 確認對話框 (初始隱藏) -->
+        <div id="confirm-dialog" class="modal hidden">
+            <div class="confirm-content">
+                <p id="confirm-message">確定要執行此操作嗎？</p>
+                <div class="confirm-actions">
+                    <button id="confirm-yes">確認</button>
+                    <button id="confirm-no">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示訊息框 (用於短暫顯示操作結果) -->
+        <div id="toast-message" class="toast hidden"></div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,544 @@
+/* 基本重設與設定 */
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  width: 350px; /* 側邊欄建議寬度 */
+  height: 100vh;
+  background-color: #f4f4f5;
+  color: #1f2937;
+  overflow: hidden; /* 防止 body 滾動 */
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 頁首 */
+header {
+  padding: 10px 15px;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0; /* 不縮小 */
+}
+
+header h1 {
+  font-size: 1.1em;
+  margin: 0 0 10px 0;
+  text-align: center;
+  color: #374151;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    position: relative; /* 為了排序選項定位 */
+}
+
+#search-input {
+  flex-grow: 1;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95em;
+  margin-right: 5px;
+}
+
+#sort-button {
+    padding: 6px 10px; /* 調整讓按鈕大小適中 */
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
+    background-color: #fff;
+    border-radius: 4px;
+}
+#sort-button:hover {
+    background-color: #f9fafb;
+}
+
+.sort-options {
+    position: absolute;
+    top: 100%; /* 位於按鈕下方 */
+    right: 0;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+}
+
+.sort-options button {
+    background: none;
+    border: none;
+    padding: 8px 15px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sort-options button:hover {
+    background-color: #f3f4f6;
+}
+
+
+/* 頁籤列 */
+.tab-bar {
+  display: flex;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 5px 10px;
+   flex-shrink: 0; /* 不縮小 */
+}
+
+.tab-button {
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+  margin-right: 5px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-button:hover {
+  color: #1f2937;
+}
+
+.tab-button.active {
+  color: #3b82f6; /* 醒目顏色 */
+  border-bottom-color: #3b82f6;
+  font-weight: 600;
+}
+
+/* 主要內容區域 */
+main#content-area {
+  flex-grow: 1; /* 佔滿剩餘空間 */
+  overflow-y: auto; /* 內容過多時允許滾動 */
+  padding: 15px;
+}
+
+.loading {
+  text-align: center;
+  color: #6b7280;
+  padding: 20px;
+}
+
+/* 提示詞列表 */
+.prompt-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prompt-item {
+    background-color: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease-in-out;
+}
+.prompt-item:hover {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.prompt-item.deleted {
+    background-color: #fef2f2; /* 淡紅色背景標示已刪除 */
+    opacity: 0.8;
+}
+.prompt-item.deleted .prompt-title {
+     text-decoration: line-through;
+}
+
+
+.prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.prompt-title {
+    font-weight: 600;
+    color: #111827;
+    font-size: 1.05em;
+    /* 防止標題過長溢出 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1; /* 佔用多餘空間 */
+    margin-right: 10px; /* 與按鈕保持距離 */
+}
+
+.prompt-meta {
+    font-size: 0.8em;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+.prompt-meta .tags span {
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-right: 4px;
+    font-size: 0.9em;
+}
+
+.prompt-content-preview {
+    font-size: 0.9em;
+    color: #4b5563;
+    max-height: 3.6em; /* 限制最多顯示約 2-3 行 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 限制顯示的行數 */
+    -webkit-box-orient: vertical;
+     margin-bottom: 10px;
+}
+
+.prompt-actions {
+    display: flex;
+    gap: 8px; /* 按鈕間距 */
+    flex-wrap: wrap; /* 按鈕多時換行 */
+    justify-content: flex-end; /* 按鈕靠右 */
+}
+
+.prompt-actions .icon-button {
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 1.1em; /* 圖示大小 */
+    color: #6b7280;
+    transition: color 0.2s;
+}
+.prompt-actions .icon-button:hover {
+    color: #374151;
+}
+.prompt-actions .icon-button.danger:hover {
+    color: #ef4444; /* 危險操作紅色 */
+}
+
+/* 標籤頁 */
+.tag-list-container {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.tag-list-container h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1em;
+    color: #374151;
+}
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.tag-item {
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.tag-item:hover {
+    background-color: #c7d2fe;
+}
+.tag-item.selected {
+    background-color: #4f46e5;
+    color: white;
+    border-color: #4338ca;
+}
+.clear-tag-filter {
+    background: none;
+    border: none;
+    color: #3b82f6;
+    cursor: pointer;
+    font-size: 0.9em;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+
+/* 垃圾桶頁 */
+.trash-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.trash-actions button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border: 1px solid #d1d5db;
+    background-color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.trash-actions button:hover {
+    background-color: #f9fafb;
+}
+.trash-actions button.danger {
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+.trash-actions button.danger:hover {
+    background-color: #fee2e2;
+}
+
+/* 選擇模式下的 Checkbox */
+.prompt-item.selection-mode {
+    display: flex;
+    align-items: center;
+}
+.prompt-item.selection-mode input[type="checkbox"] {
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+.prompt-item.selection-mode .prompt-details {
+    flex-grow: 1;
+    /* 如果需要，可以限制寬度防止內容被擠壓 */
+    min-width: 0; /* 防止 flex item 溢出 */
+}
+
+
+/* 匯入/匯出頁 */
+.import-export-section {
+    margin-bottom: 20px;
+}
+.import-export-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1em;
+    color: #374151;
+}
+.import-export-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.import-export-actions button,
+.import-export-actions label { /* 讓 label 看起來像按鈕 */
+    padding: 10px 15px;
+    font-size: 0.95em;
+    border: 1px solid #d1d5db;
+    background-color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    color: #374151;
+}
+.import-export-actions button:hover,
+.import-export-actions label:hover {
+    background-color: #f9fafb;
+}
+#import-file {
+    display: none; /* 隱藏實際的 input file */
+}
+.status-message {
+    margin-top: 15px;
+    font-size: 0.9em;
+}
+.status-message.success {
+    color: #16a34a;
+}
+.status-message.error {
+    color: #dc2626;
+}
+/* 部分匯出選擇列表 */
+#partial-export-list-container {
+    margin-top: 15px;
+    max-height: 40vh; /* 限制高度，超出滾動 */
+    overflow-y: auto;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+#partial-export-list-container .prompt-item {
+    cursor: default; /* 在選擇模式下取消項目點擊 */
+}
+
+
+/* 表單樣式 */
+#prompt-form-container, #confirm-dialog {
+    position: fixed; /* 使用 fixed 定位實現模態效果 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* 半透明背景 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100; /* 確保在最上層 */
+}
+
+#prompt-form, .confirm-content {
+    background-color: #fff;
+    padding: 25px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 90%; /* 相對寬度 */
+    max-width: 500px; /* 最大寬度限制 */
+    max-height: 90vh; /* 最大高度 */
+    overflow-y: auto; /* 表單內容多時可滾動 */
+}
+#prompt-form h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.2em;
+    color: #374151;
+}
+#prompt-form div {
+    margin-bottom: 15px;
+}
+#prompt-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #374151;
+}
+#prompt-form input[type="text"],
+#prompt-form textarea {
+    width: calc(100% - 22px); /* 減去 padding 和 border */
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.95em;
+    resize: vertical; /* 允許垂直調整 textarea 大小 */
+}
+#prompt-form textarea {
+    min-height: 60px;
+}
+#prompt-form .required {
+    color: #ef4444;
+    margin-left: 4px;
+}
+.form-actions, .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+.form-actions button, .confirm-actions button {
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95em;
+    border: none;
+}
+#save-prompt-button, #confirm-yes {
+    background-color: #3b82f6;
+    color: white;
+}
+#save-prompt-button:hover, #confirm-yes:hover {
+    background-color: #2563eb;
+}
+#cancel-prompt-button, #confirm-no {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+#cancel-prompt-button:hover, #confirm-no:hover {
+    background-color: #d1d5db;
+}
+/* 標籤建議 */
+.tag-suggestions {
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+.tag-suggestions button {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+}
+.tag-suggestions button:hover {
+    background-color: #f3f4f6;
+}
+
+
+/* 確認對話框 */
+.confirm-content {
+    padding: 20px;
+    text-align: center;
+    width: auto; /* 寬度由內容決定 */
+    min-width: 250px;
+}
+#confirm-message {
+    margin: 0 0 20px 0;
+    font-size: 1.05em;
+    color: #374151;
+}
+
+/* Toast 提示訊息 */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    z-index: 110; /* 比模態框更高 */
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}
+.toast.success {
+    background-color: #16a34a;
+}
+.toast.error {
+    background-color: #dc2626;
+}
+.toast.hidden {
+    opacity: 0;
+    pointer-events: none; /* 隱藏時不佔用事件 */
+}
+
+
+/* 通用樣式 */
+.hidden {
+    display: none !important; /* 強制隱藏 */
+}
+.icon-button { /* 簡單的圖標按鈕樣式 */
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    color: #6b7280;
+    line-height: 1; /* 避免圖標文字造成額外高度 */
+}
+.icon-button:hover {
+    color: #374151;
+}
+
+/* 高亮效果 (例如新建副本後) */
+.highlight {
+    animation: highlight-bg 2s ease-out;
+}
+@keyframes highlight-bg {
+    0% { background-color: #a5f3fc; } /* 亮青色 */
+    100% { background-color: #fff; } /* 恢復原背景 */
+}
