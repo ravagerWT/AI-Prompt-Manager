@@ -859,40 +859,74 @@ async function handleCopyPrompt(id, content) {
  * @param {string} content - 要插入的內容
  */
 function handleInsertPrompt(content) {
-    // 1. 獲取當前活動的分頁
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs.length === 0) {
-            showToast("無法找到活動分頁", "error");
-            console.error("No active tab found.");
+    console.log("handleInsertPrompt called.");
+
+    // *** 修改：嘗試獲取最後獲得焦點的窗口 ***
+    chrome.windows.getLastFocused({ populate: true }, (window) => {
+        if (chrome.runtime.lastError || !window) {
+            console.error("無法獲取最後焦點窗口:", chrome.runtime.lastError?.message || "未知錯誤");
+            showToast("無法確定目標窗口", "error");
             return;
         }
-        const activeTabId = tabs[0].id;
 
-        // 2. 向該分頁的 Content Script 發送訊息
+        // 從獲取的窗口中找到活動的 Tab
+        const activeTab = window.tabs?.find(tab => tab.active);
+
+        if (!activeTab || !activeTab.id) {
+            console.error("在焦點窗口中找不到活動分頁。 Window tabs:", window.tabs);
+            showToast("無法找到有效的活動分頁", "error");
+            return;
+        }
+
+        const targetTabId = activeTab.id;
+        const targetUrl = activeTab.url;
+
+        console.log(`Targeting last focused window's active tab ID: ${targetTabId}, URL: ${targetUrl}`);
+
+        // *** 恢復 URL 檢查，現在應該能獲取正確的 URL ***
+        if (!targetUrl || targetUrl.startsWith('chrome://') || targetUrl.startsWith('chrome-extension://') || targetUrl.includes('chrome.google.com/webstore')) {
+            console.warn(`阻止在受限制頁面 (${targetUrl}) 插入。`);
+            showToast("無法在此特殊頁面插入提示詞", "warning");
+            return;
+        }
+
+        console.log(`URL check passed. Proceeding to executeScript on tab ID: ${targetTabId}`);
+
+        // 執行腳本注入 (後續邏輯保持不變)
         chrome.scripting.executeScript({
-            target: { tabId: activeTabId },
-            func: insertTextIntoActiveElement, // 直接傳遞函數
-            args: [content] // 將內容作為參數傳遞
+            target: { tabId: targetTabId },
+            func: insertTextIntoActiveElement,
+            args: [content]
         }, (results) => {
             if (chrome.runtime.lastError) {
-                console.error("插入腳本執行錯誤:", chrome.runtime.lastError.message);
-                showToast("插入失敗: 無法在當前頁面執行腳本", "error");
+                console.error(`executeScript Error: ${chrome.runtime.lastError.message}`);
+                let userMessage = "插入失敗: 無法在當前頁面執行腳本。";
+                if (chrome.runtime.lastError.message.includes("Cannot access") || chrome.runtime.lastError.message.includes("Cannot script") || chrome.runtime.lastError.message.includes("No access")) {
+                     userMessage = `無法在頁面 (${targetUrl || '未知URL'}) 上執行插入操作。`;
+                } else if (chrome.runtime.lastError.message.includes("No tab with id") || chrome.runtime.lastError.message.includes("No frame with id")) {
+                     userMessage = "插入失敗: 目標頁面已關閉或無法訪問。";
+                } else if (chrome.runtime.lastError.message.includes("missing host permission")) {
+                     userMessage = `插入失敗: 缺少對此頁面 (${targetUrl || '未知URL'}) 的操作權限。`;
+                     console.warn("Host permission missing. Check manifest and target URL:", targetUrl);
+                }
+                showToast(userMessage, "error");
                 return;
             }
 
-            // executeScript 的回調會收到一個包含每個 frame 結果的陣列
-            // 我們主要關心主 frame 的結果
             if (results && results.length > 0 && results[0].result) {
                  const result = results[0].result;
                  if (result.success) {
                      showToast("提示詞已插入!", "success", 1500);
                  } else {
-                     showToast(`插入失敗: ${result.message}`, "error");
+                     showToast(`插入失敗: ${result.message || '頁面中未找到輸入框'}`, "error");
                  }
             } else {
-                 // 可能是 Content script 沒有正確返回結果或沒有執行
-                 console.warn("插入腳本沒有返回預期的結果:", results);
-                 showToast("插入失敗: 未找到可插入的輸入框", "error");
+                 console.warn("Injection script did not return expected result:", results);
+                 if (targetUrl && (targetUrl.startsWith('https://chrome.google.com/') || targetUrl.startsWith('chrome://'))) {
+                      showToast("無法在此特殊頁面插入提示詞", "warning");
+                 } else {
+                      showToast("插入失敗: 未找到可插入的輸入框或頁面阻止了操作。", "error");
+                 }
             }
         });
     });

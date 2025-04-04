@@ -11,10 +11,13 @@
     "permissions": [
       "storage",
       "sidePanel",
-      "activeTab",
       "scripting",
       "downloads",
-      "contextMenus"
+      "contextMenus",
+      "tabs"
+    ],
+    "host_permissions": [
+      "<all_urls>"
     ],
     "side_panel": {
       "default_path": "sidepanel.html"
