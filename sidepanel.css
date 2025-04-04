@@ -143,25 +143,36 @@ main#content-area {
     border-radius: 6px;
     margin-bottom: 10px;
     padding: 12px 15px;
-    cursor: pointer;
+    /* cursor: pointer;  <-- 將 cursor:pointer 移到 .prompt-details 上可能更好 */
     transition: box-shadow 0.2s ease-in-out;
+    display: flex; /* 為了讓 checkbox 和 details 並排 */
+    align-items: flex-start; /* 頂部對齊 */
 }
 .prompt-item:hover {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.prompt-item.deleted {
-    background-color: #fef2f2; /* 淡紅色背景標示已刪除 */
-    opacity: 0.8;
+/* Checkbox 樣式 (如果需要調整間距) */
+.prompt-item.selection-mode input[type="checkbox"] {
+    margin-right: 10px;
+    margin-top: 2px; /* 微調垂直對齊 */
+    flex-shrink: 0;
 }
-.prompt-item.deleted .prompt-title {
-     text-decoration: line-through;
+
+.prompt-details {
+    flex-grow: 1; /* 佔據剩餘空間 */
+    min-width: 0; /* 防止 flex item 溢出 */
+    cursor: pointer; /* 將點擊編輯的提示移到這裡 */
+}
+.prompt-details:has(.prompt-actions:empty) {
+     /* 如果按鈕區是空的 (例如選擇模式下)，可能不需要點擊效果 */
+     /* cursor: default; */ /* 或者保持 pointer */
 }
 
 
 .prompt-header {
-    display: flex;
-    justify-content: space-between;
+    display: flex; /* Header 仍然是 flex เพื่อ讓未來可能添加的元素（如 pin 圖標）可以對齊 */
+    /* justify-content: space-between; <-- 不再需要，因為按鈕移走了 */
     align-items: center;
     margin-bottom: 8px;
 }
@@ -170,18 +181,18 @@ main#content-area {
     font-weight: 600;
     color: #111827;
     font-size: 1.05em;
-    /* 防止標題過長溢出 */
+    /* 標題溢出處理保持不變 */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-grow: 1; /* 佔用多餘空間 */
-    margin-right: 10px; /* 與按鈕保持距離 */
+    flex-grow: 1; /* 標題佔滿 header 的可用寬度 */
+    /* margin-right: 10px; <-- 如果 header 內沒有其他元素了，這個可以移除 */
 }
 
 .prompt-meta {
     font-size: 0.8em;
     color: #6b7280;
-    margin-bottom: 8px;
+    margin-bottom: 8px; /* 與下方預覽或按鈕的間距 */
 }
 .prompt-meta .tags span {
     background-color: #e0e7ff;
@@ -195,28 +206,32 @@ main#content-area {
 .prompt-content-preview {
     font-size: 0.9em;
     color: #4b5563;
-    max-height: 3.6em; /* 限制最多顯示約 2-3 行 */
+    max-height: 3.6em;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* 限制顯示的行數 */
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-     margin-bottom: 10px;
+     margin-bottom: 10px; /* 與下方按鈕的間距 */
 }
 
 .prompt-actions {
     display: flex;
-    gap: 8px; /* 按鈕間距 */
+    gap: 8px;
     flex-wrap: wrap; /* 按鈕多時換行 */
-    justify-content: flex-end; /* 按鈕靠右 */
+    justify-content: flex-end; /* 按鈕預設靠右對齊 */
+    margin-top: 12px; /* *** 添加與上方內容的間距 *** */
+    /* border-top: 1px solid #f3f4f6; */ /* 可選：添加細微的分隔線 */
+    /* padding-top: 8px; */ /* 可選：分隔線與按鈕的間距 */
 }
 
 .prompt-actions .icon-button {
+    /* 按鈕本身樣式保持不變 */
     background: none;
     border: none;
     padding: 5px;
     cursor: pointer;
-    font-size: 1.1em; /* 圖示大小 */
+    font-size: 1.1em;
     color: #6b7280;
     transition: color 0.2s;
 }
@@ -224,7 +239,7 @@ main#content-area {
     color: #374151;
 }
 .prompt-actions .icon-button.danger:hover {
-    color: #ef4444; /* 危險操作紅色 */
+    color: #ef4444;
 }
 
 /* 標籤頁 */
