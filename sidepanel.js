@@ -251,14 +251,14 @@ function createPromptListItem(prompt) {
         ${!isSelectionMode ? `
           <div class="prompt-actions">
             ${prompt.isDeleted ? `
-              <button class="icon-button recover-button" title="復原">R</button>
-              <button class="icon-button perm-delete-button danger" title="永久刪除">X</button>
+              <button class="icon-button recover-button" title="復原">復</button>
+              <button class="icon-button perm-delete-button danger" title="永久刪除">除</button>
             ` : `
-              <button class="icon-button copy-button" title="複製內容">C</button>
-              <button class="icon-button insert-button" title="插入到頁面">I</button>
-              <button class="icon-button duplicate-button" title="建立副本">D</button>
-              <button class="icon-button export-button" title="匯出此項">E</button>
-              <button class="icon-button delete-button danger" title="移至垃圾桶">T</button>
+              <button class="icon-button copy-button" title="複製內容">複</button>
+              <button class="icon-button insert-button" title="插入到頁面">插</button>
+              <button class="icon-button duplicate-button" title="建立副本">副</button>
+              <button class="icon-button export-button" title="匯出此項">匯</button>
+              <button class="icon-button delete-button danger" title="移至垃圾桶">刪</button>
             `}
           </div>
         ` : ''}
