@@ -259,7 +259,7 @@ function createPromptListItem(prompt) {
         actionsHTML += `</div>`;
     }
 
-    // --- 構建新的順序 ---
+    // --- 構建新的順序，包含條件式顯示 Purpose 和 Tags ---
     li.innerHTML = `
         ${checkboxHTML}
         <div class="prompt-details">
@@ -268,23 +268,32 @@ function createPromptListItem(prompt) {
                 <span class="prompt-title">${prompt.title}</span>
             </div>
 
-            <!-- 2. 提示詞內容 (預覽，僅非垃圾桶) -->
-            ${(!prompt.isDeleted && prompt.content) ? `<div class="prompt-content-preview">${prompt.content}</div>` : ''}
+            <!-- 2. 提示詞用途 (如果存在) -->
+            ${prompt.purpose ? `
+                <div class="prompt-purpose">
+                    <span class="purpose-label">用途:</span> ${prompt.purpose}
+                </div>
+            ` : ''}
 
-            <!-- 3. 標籤 (如果存在) -->
+            <!-- 3. 提示詞內容 (預覽，僅非垃圾桶) -->
+            ${(!prompt.isDeleted && prompt.content) ? `
+                <div class="prompt-content-preview">${prompt.content}</div>
+                ` : ''}
+
+            <!-- 4. 標籤 (如果存在) -->
             ${(prompt.tags && prompt.tags.length > 0) ? `
                 <div class="prompt-tags">
                     ${prompt.tags.map(tag => `<span>${tag}</span>`).join(' ')}
                 </div>
             ` : ''}
 
-            <!-- 4. 修改及建立日期時間 -->
+            <!-- 5. 修改及建立日期時間 -->
             <div class="prompt-timestamps">
                 <span class="timestamp-label">修改:</span> ${formatDateTime(prompt.updatedAt)} |
                 <span class="timestamp-label">建於:</span> ${formatDateTime(prompt.createdAt)}
             </div>
 
-            <!-- 5. 互動按鈕 -->
+            <!-- 6. 互動按鈕 -->
             ${actionsHTML}
         </div>
     `;
@@ -541,18 +550,27 @@ function renderTrashView(deletedPrompts) {
 function renderImportExportView() {
     contentArea.innerHTML = `
         <div class="import-export-section">
-            <h3>匯出提示詞</h3>
+            <!-- ** 新容器，包含標題和部分匯出按鈕 ** -->
+            <div class="export-heading-container">
+                <h3>匯出提示詞</h3>
+                <!-- ** 部分匯出時顯示的操作按鈕 (初始隱藏) ** -->
+                <div id="partial-export-action-buttons" class="hidden">
+                    <button id="confirm-partial-export" class="primary" disabled>匯出選取項目 (0)</button> <!-- Add initial state -->
+                    <button id="cancel-partial-export">取消</button>
+                </div>
+            </div>
+
+            <!-- ** 初始的操作按鈕 (部分/全部) ** -->
             <div class="import-export-actions" id="export-actions">
                 <button id="export-partial-button">部分匯出...</button>
                 <button id="export-all-button">全部匯出為 JSON</button>
             </div>
+
+            <!-- ** 部分匯出時顯示的列表容器 ** -->
             <div id="partial-export-list-container" class="hidden">
                 <h4>選擇要匯出的提示詞：</h4>
                 <ul id="partial-export-list" class="prompt-list"></ul>
-                 <div class="form-actions">
-                     <button id="confirm-partial-export" class="primary">匯出選取項目</button>
-                     <button id="cancel-partial-export">取消</button>
-                 </div>
+                <!-- ** 按鈕已移到上方 ** -->
             </div>
         </div>
 
@@ -1189,56 +1207,101 @@ function handleExportAll() {
  * 進入部分匯出模式
  */
 function enterPartialExportMode() {
-    isSelectionMode = true; // 進入選擇模式
-    selectedPromptIds.clear(); // 清空選擇
+    console.log("Entering partial export mode..."); // 日誌：函數開始
+    isSelectionMode = true;
+    selectedPromptIds.clear();
 
     document.getElementById('export-actions').classList.add('hidden');
     const listContainer = document.getElementById('partial-export-list-container');
-    listContainer.classList.remove('hidden');
+    const newButtonContainer = document.getElementById('partial-export-action-buttons');
+
+    // *** 關鍵：檢查元素是否存在並移除 hidden ***
+    if (newButtonContainer) {
+        console.log("Partial export action buttons container found. Removing hidden class...");
+        newButtonContainer.classList.remove('hidden');
+        // *** 檢查是否真的移除了 ***
+        console.log("Button container class list after remove:", newButtonContainer.className);
+        // *** 檢查計算後的樣式，確認 display 不是 none ***
+        if (window.getComputedStyle(newButtonContainer).display === 'none') {
+             console.warn("Button container display style is still 'none' after removing hidden class! Check CSS conflicts.");
+        } else {
+             console.log("Button container display style is now:", window.getComputedStyle(newButtonContainer).display);
+        }
+    } else {
+        console.error("#partial-export-action-buttons element NOT FOUND in the DOM!");
+        // 如果元素找不到，後續綁定監聽器等都會失敗
+        return; // 提前退出，防止後續錯誤
+    }
+
+    // 顯示列表容器
+     if(listContainer) {
+        listContainer.classList.remove('hidden');
+     } else {
+        console.error("#partial-export-list-container element NOT FOUND!");
+        return
+     }
+
+
     const listElement = document.getElementById('partial-export-list');
+    if(!listElement) {
+        console.error("#partial-export-list element NOT FOUND!");
+        return;
+    }
     listElement.innerHTML = '<div class="loading">載入提示詞...</div>';
 
     const activePrompts = sortPrompts(allPrompts.filter(p => !p.isDeleted), currentSort);
     listElement.innerHTML = '';
 
-    const confirmBtn = listContainer.querySelector('#confirm-partial-export');
-    const cancelBtn = listContainer.querySelector('#cancel-partial-export');
+    const confirmBtn = newButtonContainer.querySelector('#confirm-partial-export');
+    const cancelBtn = newButtonContainer.querySelector('#cancel-partial-export');
+
+    // 檢查按鈕是否存在
+    if (!confirmBtn || !cancelBtn) {
+        console.error("Confirm or Cancel button not found within #partial-export-action-buttons!");
+        return;
+    }
+
 
     if (activePrompts.length === 0) {
         listElement.innerHTML = '<li class="empty-message">沒有可供選擇的提示詞。</li>';
-        if(confirmBtn) confirmBtn.disabled = true;
+        confirmBtn.disabled = true;
     } else {
         activePrompts.forEach(prompt => {
-            const listItem = createPromptListItem(prompt); // isSelectionMode=true 會渲染 checkbox
+            const listItem = createPromptListItem(prompt);
             listElement.appendChild(listItem);
         });
-        if(confirmBtn) confirmBtn.disabled = true; // 初始狀態下沒有選中，禁用按鈕
+        confirmBtn.disabled = true; // 初始禁用
     }
 
-    // *** 更新初始按鈕文字和狀態 ***
-     if (confirmBtn) {
-        confirmBtn.textContent = `匯出選取項目 (0)`; // 初始計數為 0
-     }
+    confirmBtn.textContent = `匯出選取項目 (0)`;
 
     // 重新綁定事件監聽器
-    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
-    listContainer.querySelector('#confirm-partial-export').addEventListener('click', handleConfirmPartialExport);
-    listContainer.querySelector('#cancel-partial-export').addEventListener('click', exitPartialExportMode);
+    const newConfirmBtn = confirmBtn.cloneNode(true); // 使用 cloneNode 清除監聽器
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    newConfirmBtn.addEventListener('click', handleConfirmPartialExport);
+
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    newCancelBtn.addEventListener('click', exitPartialExportMode);
+
+    updateDeleteSelectedButtonCount();
+    console.log("Partial export mode setup complete."); // 日誌：函數結束
 }
 
 /**
  * 退出部分匯出模式
  */
 function exitPartialExportMode() {
-    // 退出選擇模式的邏輯已包含在 exitSelectionMode 中
-    // 只需處理界面元素的顯示/隱藏
-    document.getElementById('export-actions').classList.remove('hidden');
+    // *** 隱藏列表和新的按鈕容器，顯示初始按鈕 ***
+    document.getElementById('export-actions').classList.remove('hidden'); // 顯示初始按鈕
     const listContainer = document.getElementById('partial-export-list-container');
-    listContainer.classList.add('hidden');
-    listContainer.querySelector('#partial-export-list').innerHTML = '';
-     // 調用通用的退出選擇模式函數
-     exitSelectionMode();
+    listContainer.classList.add('hidden'); // 隱藏列表
+    listContainer.querySelector('#partial-export-list').innerHTML = ''; // 清空列表內容
+    const newButtonContainer = document.getElementById('partial-export-action-buttons');
+    newButtonContainer.classList.add('hidden'); // *** 隱藏新的按鈕容器 ***
+
+    // 調用通用的退出選擇模式函數來重置狀態
+     exitSelectionMode(); // 這個會設置 isSelectionMode = false, 清空 selectedPromptIds
 }
 
 /**

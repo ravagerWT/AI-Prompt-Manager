@@ -177,9 +177,9 @@ main#content-area {
      /* cursor: default; */ /* 或者保持 pointer */
 }
 
-
+/* 1. 標題 */
 .prompt-header {
-    display: flex; /* Header 仍然是 flex เพื่อ讓未來可能添加的元素（如 pin 圖標）可以對齊 */
+    display: flex; /* Header 仍然是 flex 讓未來可能添加的元素（如 pin 圖標）可以對齊 */
     /* justify-content: space-between; <-- 不再需要，因為按鈕移走了 */
     align-items: center;
     margin-bottom: 8px;
@@ -198,19 +198,44 @@ main#content-area {
     /* margin-right: 10px; <-- 如果 header 內沒有其他元素了，這個可以移除 */
 }
 
+/* 2. 用途 (新增樣式) */
+.prompt-purpose {
+    font-size: 0.85em;       /* 比內容預覽稍小 */
+    color: #4b5563;         /* 內容顏色 */
+    background-color: #f9fafb; /* 淺背景突出 */
+    padding: 6px 10px;       /* 內邊距 */
+    border-radius: 4px;      /* 圓角 */
+    margin-bottom: 10px;     /* 與下方內容/標籤的間距 */
+    line-height: 1.4;
+    /* 可以考慮限制行數，如果用途可能很長 */
+    /* max-height: calc(0.85em * 1.4 * 3); */ /* 最多顯示 3 行 */
+    /* overflow: hidden; */
+    /* text-overflow: ellipsis; */
+    /* display: -webkit-box; */
+    /* -webkit-line-clamp: 3; */
+    /* -webkit-box-orient: vertical; */
+}
+.prompt-purpose .purpose-label {
+    font-weight: 600;       /* 標籤加粗 */
+    color: #1f2937;         /* 標籤顏色深一點 */
+    margin-right: 4px;
+}
+
+/* 3. 內容預覽 */
 .prompt-content-preview {
     font-size: 0.9em;
+    line-height: 1.4;          /* **建議明確設置行高**，以便估算高度 */
     color: #4b5563;
-    max-height: 3.6em;
+    max-height: calc(0.9em * 1.6 * 6); /* 計算大約 4 行的高度 (字體大小 * 行高 * 行數) */
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 6;
     -webkit-box-orient: vertical;
      margin-bottom: 10px; /* 與下方按鈕的間距 */
 }
 
-/* 3. 標籤 */
+/* 4. 標籤 */
 .prompt-tags {
     margin-bottom: 8px; /* 與下方時間戳的間距 */
 }
@@ -225,7 +250,7 @@ main#content-area {
     line-height: 1.4;
 }
 
-/* 4. 時間戳 */
+/* 5. 時間戳 */
 .prompt-timestamps {
     font-size: 0.8em;
     color: #6b7280;
@@ -236,6 +261,7 @@ main#content-area {
     color: #4b5563;
 }
 
+/* 6. 按鈕 */
 .prompt-actions {
     display: flex;
     gap: 8px;
@@ -358,10 +384,74 @@ main#content-area {
 }
 .import-export-section h3 {
     margin-top: 0;
-    margin-bottom: 10px;
+    margin-bottom: 10px; /* 標題和下方內容的間距 */
     font-size: 1em;
     color: #374151;
 }
+
+/* 匯出標題和按鈕的容器樣式 */
+.export-heading-container {
+    display: flex;                  /* 啟用 Flexbox */
+    justify-content: space-between; /* 將子元素推向兩端 */
+    align-items: center;          /* 垂直居中對齊 */
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    /* --- 添加邊框以便調試 --- */
+    /* border: 1px dashed red; */
+}
+
+.export-heading-container h3 {
+    margin-bottom: 0;
+    /* border: 1px dotted blue; */ /* 調試標題範圍 */
+}
+
+/* 部分匯出操作按鈕容器樣式 */
+#partial-export-action-buttons {
+    display: flex;  /* 讓內部的按鈕排列 */
+    gap: 8px;
+    flex-shrink: 0; /* 防止按鈕容器被壓縮 */
+    /* --- 添加邊框以便調試 --- */
+    /* border: 1px dotted green; */
+}
+
+/* 確保 hidden class 能正確隱藏 */
+#partial-export-action-buttons.hidden {
+    display: none !important;
+}
+
+/* *** 新增/調整：部分匯出操作按鈕樣式 *** */
+/* 可以複用 .form-actions button 的樣式，或單獨定義 */
+#partial-export-action-buttons button {
+    padding: 6px 12px; /* 調整按鈕大小 */
+    font-size: 0.9em;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #d1d5db; /* 預設邊框 */
+    white-space: nowrap; /* 防止按鈕文字換行影響佈局 */
+}
+#partial-export-action-buttons button.primary { /* 匯出按鈕 */
+    background-color: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+#partial-export-action-buttons button.primary:disabled {
+    background-color: #9ca3af; /* 禁用時的顏色 */
+    border-color: #9ca3af;
+    cursor: not-allowed;
+}
+#partial-export-action-buttons button#cancel-partial-export { /* 取消按鈕 */
+    background-color: #e5e7eb;
+    color: #374151;
+    border-color: #d1d5db;
+}
+#partial-export-action-buttons button#cancel-partial-export:hover {
+    background-color: #d1d5db;
+}
+#partial-export-action-buttons button.primary:not(:disabled):hover {
+     background-color: #2563eb;
+     border-color: #2563eb;
+}
+
 .import-export-actions {
     display: flex;
     flex-direction: column;
@@ -397,12 +487,19 @@ main#content-area {
 }
 /* 部分匯出選擇列表 */
 #partial-export-list-container {
-    margin-top: 15px;
-    max-height: 40vh; /* 限制高度，超出滾動 */
+    margin-top: 0; /* 因為按鈕上移了，這裡可能不需要上邊距 */
+    max-height: 40vh;
     overflow-y: auto;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #eee; /* 列表頂部加分隔線 */
     padding-top: 10px;
 }
+#partial-export-list-container h4 { /* 列表上方的小標題 */
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: #4b5563;
+}
+
 #partial-export-list-container .prompt-item {
     cursor: default; /* 在選擇模式下取消項目點擊 */
 }
