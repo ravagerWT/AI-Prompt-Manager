@@ -982,23 +982,39 @@ async function recoverPromptFromTrash(id) {
 /**
  * 永久刪除一個或多個提示詞
  * @param {string[]} idsToDelete - 要永久刪除的提示詞 ID 陣列
+ * @returns {Promise<boolean>} - 操作成功 (數據已從 allPrompts 移除且成功儲存) 返回 true，否則返回 false
  */
 async function permanentlyDeletePrompts(idsToDelete) {
-  const initialLength = allPrompts.length;
-  allPrompts = allPrompts.filter(p => !idsToDelete.includes(p.id));
-  const deletedCount = initialLength - allPrompts.length;
-
-  if (deletedCount > 0) {
-    if (await savePromptsToStorage(allPrompts)) {
-      showToast(`已永久刪除 ${deletedCount} 個提示詞`, 'success');
-      // 清空選擇（如果是在選擇模式下觸發的）
-      exitSelectionMode(); // 會觸發 renderCurrentView
+    const initialLength = allPrompts.length;
+    const originalPrompts = [...allPrompts]; // 保留原始副本以便儲存失敗時恢復 (可選)
+  
+    allPrompts = allPrompts.filter(p => !idsToDelete.includes(p.id));
+    const deletedCount = initialLength - allPrompts.length;
+  
+    let success = false; // 預設為失敗
+  
+    if (deletedCount > 0) {
+      if (await savePromptsToStorage(allPrompts)) {
+        showToast(`已永久刪除 ${deletedCount} 個提示詞`, 'success');
+        success = true; // 標記成功
+      } else {
+          // 儲存失敗，恢復 allPrompts (可選)
+          allPrompts = originalPrompts;
+          console.error("永久刪除後儲存失敗，操作已回滾。");
+          // showToast 已經在 savePromptsToStorage 中處理
+          success = false;
+      }
+    } else {
+      showToast('沒有找到要刪除的提示詞', 'info');
+      success = true; // 沒有實際刪除但也算操作完成（沒有失敗）
     }
-  } else {
-    showToast('沒有找到要刪除的提示詞', 'info');
-     exitSelectionMode(); // 即使沒刪除也要退出選擇模式並刷新
+  
+    // 無論成功與否，都嘗試退出選擇模式 (如果有的話)
+    // exitSelectionMode 內部會根據當前 tab 決定是否刷新視圖
+    exitSelectionMode();
+  
+    return success; // 返回操作最終是否成功
   }
-}
 
 /**
  * 建立一個現有提示詞的副本
@@ -1376,16 +1392,34 @@ async function handlePermanentDeleteSelected() {
  * 處理點擊「清空垃圾桶」按鈕
  */
 async function handleEmptyTrash() {
-    const trashCount = allPrompts.filter(p => p.isDeleted).length;
+    const trashItems = allPrompts.filter(p => p.isDeleted); // 先獲取待刪除項
+    const trashCount = trashItems.length;
+
     if (trashCount === 0) {
         showToast("垃圾桶已經是空的了", "info");
         return;
     }
 
     if (await showConfirm(`確定要清空垃圾桶嗎？這將永久刪除 ${trashCount} 個提示詞，此操作無法復原。`)) {
-        const idsToDelete = allPrompts.filter(p => p.isDeleted).map(p => p.id);
-        await permanentlyDeletePrompts(idsToDelete);
-        // permanentlyDeletePrompts 內部會調用 exitSelectionMode 並刷新視圖
+        const idsToDelete = trashItems.map(p => p.id); // 從已過濾的項目獲取 ID
+
+        // *** 調用永久刪除函數 ***
+        // 我們需要知道刪除操作是否真的成功完成了數據更新
+        // 修改 permanentlyDeletePrompts 讓它返回一個布爾值表示成功與否
+        const deleteSuccess = await permanentlyDeletePrompts(idsToDelete);
+
+        // *** 關鍵：無論是否在選擇模式，只要刪除成功就刷新垃圾桶視圖 ***
+        if (deleteSuccess) {
+             console.log("清空垃圾桶成功，正在刷新視圖...");
+             // 傳遞最新的已刪除項目列表 (此刻應該是空的) 給渲染函數
+             renderTrashView(allPrompts.filter(p => p.isDeleted));
+        } else {
+             console.log("清空垃圾桶操作完成，但刪除或儲存失敗，不刷新視圖。");
+             // 此時 permanentlyDeletePrompts 內部應該已經顯示了錯誤 Toast
+        }
+        // 注意：permanentlyDeletePrompts 內部仍然會調用 exitSelectionMode
+        // 如果在選擇模式下點擊清空，exitSelectionMode 會再次調用 renderTrashView，
+        // 這雖然有點重複，但無害，且確保了兩種情況下視圖都能刷新。
     }
 }
 
