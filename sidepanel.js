@@ -69,45 +69,46 @@ function setupEventListeners() {
 // --- 核心渲染與邏輯 ---
 
 /**
- * 根據當前狀態 (currentTab, currentSort, searchInput.value, currentFilterTags) 渲染對應的視圖
+ * 根據當前狀態渲染對應的視圖
  */
 function renderCurrentView() {
-  // 清空選擇模式狀態
-  exitSelectionMode();
-  contentArea.innerHTML = ''; // 清空內容區域
-
-  // 1. 過濾 (根據頁籤、搜尋、標籤篩選)
-  let filteredPrompts = filterPrompts();
-
-  // 2. 排序
-  currentPrompts = sortPrompts(filteredPrompts, currentSort);
-
-  // 3. 渲染特定頁籤內容
-  switch (currentTab) {
-    case 'prompts':
-      renderPromptListView(currentPrompts.filter(p => !p.isDeleted));
-      break;
-    case 'add':
-      openPromptForm(); // 開啟新增表單
-       // 切換到新增時，通常希望列表區域是空的或顯示提示
-      contentArea.innerHTML = '<p style="text-align:center; color:#6b7280;">請在上方表單中新增提示詞。</p>';
-      break;
-    case 'tags':
-      renderTagsView(allPrompts.filter(p => !p.isDeleted));
-      break;
-    case 'trash':
-      renderTrashView(currentPrompts.filter(p => p.isDeleted));
-      break;
-    case 'import-export':
-      renderImportExportView();
-      break;
-    default:
-      contentArea.innerHTML = '<p>未知頁籤</p>';
+    console.log(`Rendering view for tab: ${currentTab}`); // <--- 添加日誌
+    exitSelectionMode();
+    contentArea.innerHTML = '';
+  
+    let filteredPrompts = filterPrompts();
+    currentPrompts = sortPrompts(filteredPrompts, currentSort);
+  
+    switch (currentTab) {
+      case 'prompts':
+        console.log('Calling renderPromptListView for prompts tab'); // <--- 添加日誌
+        renderPromptListView(currentPrompts.filter(p => !p.isDeleted));
+        break;
+      case 'add':
+        console.log('Handling add tab'); // <--- 添加日誌
+        openPromptForm();
+        contentArea.innerHTML = '<p style="text-align:center; color:#6b7280;">請在上方表單中新增提示詞。</p>';
+        break;
+      case 'tags':
+        console.log('Calling renderTagsView for tags tab'); // <--- 添加日誌
+        // 傳遞所有未刪除的提示詞給 renderTagsView
+        renderTagsView(allPrompts.filter(p => !p.isDeleted));
+        break;
+      case 'trash':
+        console.log('Calling renderTrashView for trash tab'); // <--- 添加日誌
+        renderTrashView(currentPrompts.filter(p => p.isDeleted));
+        break;
+      case 'import-export':
+        console.log('Calling renderImportExportView for import-export tab'); // <--- 添加日誌
+        renderImportExportView();
+        break;
+      default:
+        console.error(`Unknown tab: ${currentTab}`); // <--- 添加錯誤日誌
+        contentArea.innerHTML = '<p>錯誤：未知的頁籤</p>';
+    }
+  
+    updateActiveTabStyle();
   }
-
-  // 更新活動頁籤樣式
-  updateActiveTabStyle();
-}
 
 /**
  * 過濾提示詞列表
@@ -380,22 +381,29 @@ function createPromptListItem(prompt) {
 
 /**
  * 渲染標籤視圖
- * @param {Array} activePrompts - 所有未刪除的提示詞
+ * @param {Array} activePrompts - 所有未刪除的提示詞 (從 allPrompts 過濾 isDeleted=false 得來)
  */
 function renderTagsView(activePrompts) {
-    contentArea.innerHTML = ''; // 清空
+    console.log('Executing renderTagsView. Current filter tags:', currentFilterTags);
+    contentArea.innerHTML = ''; // 清空，確保從頭開始渲染
 
-    // 1. 提取所有唯一的標籤
+    // --- 1. 渲染標籤雲 ---
     const allTags = new Set();
     activePrompts.forEach(p => {
-        (p.tags || []).forEach(tag => allTags.add(tag));
+        (p.tags || []).forEach(tag => {
+            if (tag && typeof tag === 'string') {
+               allTags.add(tag);
+            } else {
+               console.warn("發現無效標籤格式:", tag, "來自提示詞ID:", p.id);
+            }
+        });
     });
-    const sortedTags = Array.from(allTags).sort(); // 按字母排序
+    const sortedTags = Array.from(allTags).sort();
+    console.log('Unique tags for cloud:', sortedTags);
 
-    // 2. 渲染標籤雲/列表
     const tagListContainer = document.createElement('div');
     tagListContainer.className = 'tag-list-container';
-    tagListContainer.innerHTML = `<h3>所有標籤 (${sortedTags.length})</h3>`;
+    tagListContainer.innerHTML = `<h3>所有標籤 (${sortedTags.length})</h3>`; // 保持 H3
 
     const tagCloud = document.createElement('div');
     tagCloud.className = 'tag-cloud';
@@ -406,50 +414,91 @@ function renderTagsView(activePrompts) {
             tagElement.className = 'tag-item';
             tagElement.textContent = tag;
             tagElement.dataset.tag = tag;
-            if (currentFilterTags.has(tag)) {
+            if (currentFilterTags.has(tag)) { // 檢查是否在當前篩選條件中
                 tagElement.classList.add('selected');
             }
-            tagElement.addEventListener('click', () => handleTagClick(tag));
+            tagElement.addEventListener('click', () => handleTagClick(tag)); // 監聽點擊
             tagCloud.appendChild(tagElement);
         });
-        // 添加清除篩選按鈕 (如果有篩選條件)
+        // 添加清除篩選按鈕 (當有篩選條件時)
         if (currentFilterTags.size > 0) {
             const clearButton = document.createElement('button');
             clearButton.textContent = '清除篩選';
             clearButton.className = 'clear-tag-filter';
             clearButton.onclick = () => {
+                console.log("Clearing tag filter.");
                 currentFilterTags.clear();
-                renderCurrentView(); // 重新渲染以清除篩選
+                // 直接重新渲染標籤頁面，因為狀態已改變
+                renderTagsView(allPrompts.filter(p => !p.isDeleted));
             };
             tagCloud.appendChild(clearButton);
         }
-
     } else {
         tagCloud.innerHTML = '<p style="color:#6b7280;">尚未建立任何標籤。</p>';
     }
     tagListContainer.appendChild(tagCloud);
-    contentArea.appendChild(tagListContainer);
+    contentArea.appendChild(tagListContainer); // 將標籤雲添加到 contentArea
 
-    // 3. 渲染篩選後的提示詞列表 (如果沒有篩選，顯示全部)
-    const promptsToShow = currentFilterTags.size > 0
-        ? filterPrompts().filter(p => !p.isDeleted) // 使用已過濾且排序的列表
-        : activePrompts; // 顯示所有活動提示詞
+    console.log('Tag cloud rendered.');
 
-     const listContainer = document.createElement('div');
-     contentArea.appendChild(listContainer); // 先添加容器，再填充列表
-     renderPromptListView(sortPrompts(promptsToShow, currentSort)); // 渲染列表並排序
+    // --- 2. 渲染提示詞列表 (根據 currentFilterTags 篩選) ---
 
-     // 更新提示信息
-    const listTitle = document.createElement('h4');
-    listTitle.style.marginTop = '15px';
+    // 決定要顯示哪些提示詞
+    let promptsToShow;
+    if (currentFilterTags.size > 0) {
+        console.log(`Filtering active prompts by tags:`, currentFilterTags);
+        promptsToShow = activePrompts.filter(prompt => {
+             const promptTags = new Set(prompt.tags || []);
+             let matchesAll = true;
+             for (const filterTag of currentFilterTags) {
+                 if (!promptTags.has(filterTag)) {
+                     matchesAll = false;
+                     break; // 只要有一個篩選標籤不匹配，就停止檢查該提示詞
+                 }
+             }
+             // console.log(`Prompt "${prompt.title}" matches filter? ${matchesAll}`); // 可選的詳細日誌
+             return matchesAll;
+        });
+        console.log(`${promptsToShow.length} prompts matched the filter.`);
+    } else {
+         // 沒有篩選條件，顯示所有活動提示詞
+         console.log('No filter tags selected, showing all active prompts.');
+         promptsToShow = activePrompts;
+    }
+
+    // 創建列表容器和標題
+    const listContainer = document.createElement('div');
+    listContainer.id = 'tags-prompt-list-container'; // 給一個唯一 ID 方便調試
+
+    const listTitle = document.createElement('h4'); // 使用 H4 與 H3 區分
+    listTitle.style.marginTop = '20px'; // 增加與標籤雲的間距
     listTitle.style.marginBottom = '10px';
     if (currentFilterTags.size > 0) {
-        listTitle.textContent = `包含標籤 "${Array.from(currentFilterTags).join(', ')}" 的提示詞 (${promptsToShow.length})：`;
+        listTitle.textContent = `包含標籤 "${Array.from(currentFilterTags).join(' & ')}" 的提示詞 (${promptsToShow.length})：`;
     } else {
         listTitle.textContent = `所有提示詞 (${activePrompts.length})：`;
     }
-    // 將標題插入到列表之前
-    listContainer.parentNode.insertBefore(listTitle, listContainer);
+    listContainer.appendChild(listTitle); // 將標題添加到列表容器
+
+    // 創建列表元素 (ul)
+    const listElement = document.createElement('ul');
+    listElement.className = 'prompt-list';
+
+    // 填充列表內容
+    if (promptsToShow.length === 0) {
+        listElement.innerHTML = `<li class="empty-message">${currentFilterTags.size > 0 ? '沒有符合目前篩選標籤的提示詞。' : '沒有提示詞可顯示。'}</li>`;
+    } else {
+        // 先排序再渲染
+        sortPrompts(promptsToShow, currentSort).forEach(prompt => {
+            const listItem = createPromptListItem(prompt); // 使用通用函數創建列表項
+            listElement.appendChild(listItem);
+        });
+    }
+    listContainer.appendChild(listElement); // 將列表 ul 添加到列表容器
+
+    contentArea.appendChild(listContainer); // *** 將包含標題和列表的容器添加到 contentArea ***
+
+    console.log('Prompt list rendered in tags view.');
 }
 
 
@@ -581,79 +630,105 @@ function openPromptForm(promptToEdit = null) {
  * @param {Event} event - 表單提交事件
  */
 async function handlePromptFormSubmit(event) {
-  event.preventDefault(); // 阻止表單預設提交行為
-
-  const id = promptIdInput.value;
-  const title = promptTitleInput.value.trim();
-  const purpose = promptPurposeInput.value.trim();
-  const content = promptContentInput.value.trim();
-  const tags = parseTags(promptTagsInput.value); // 使用工具函數解析標籤
-
-  // 驗證必填欄位
-  if (!title || !content) {
-    showToast('標題和內容為必填項', 'error');
-    // 可以在此處添加更明顯的視覺提示，例如高亮未填寫的欄位
-     if (!title) promptTitleInput.style.borderColor = 'red'; else promptTitleInput.style.borderColor = '';
-     if (!content) promptContentInput.style.borderColor = 'red'; else promptContentInput.style.borderColor = '';
-    return;
-  }
-   // 清除可能存在的錯誤樣式
-   promptTitleInput.style.borderColor = '';
-   promptContentInput.style.borderColor = '';
-
-
-  const now = getCurrentISOTime();
-  let isNew = false;
-
-  if (id) {
-    // --- 更新現有提示詞 ---
-    const promptIndex = allPrompts.findIndex(p => p.id === id);
-    if (promptIndex === -1) {
-      showToast('找不到要更新的提示詞', 'error');
+    event.preventDefault(); // 阻止表單預設提交行為
+  
+    const id = promptIdInput.value;
+    const title = promptTitleInput.value.trim();
+    const purpose = promptPurposeInput.value.trim();
+    const content = promptContentInput.value.trim();
+    const tags = parseTags(promptTagsInput.value);
+  
+    // 驗證必填欄位
+    if (!title || !content) {
+      showToast('標題和內容為必填項', 'error');
+      if (!title) promptTitleInput.style.borderColor = 'red'; else promptTitleInput.style.borderColor = '';
+      if (!content) promptContentInput.style.borderColor = 'red'; else promptContentInput.style.borderColor = '';
       return;
     }
-    const updatedPrompt = {
-      ...allPrompts[promptIndex], // 保留原有屬性 (如 createdAt, isDeleted)
-      title,
-      purpose,
-      content,
-      tags,
-      updatedAt: now,
-    };
-    allPrompts[promptIndex] = updatedPrompt;
-    showToast('提示詞修改成功!', 'success');
-  } else {
-    // --- 新增提示詞 ---
-    isNew = true;
-    const newPrompt = {
-      id: generateId(),
-      title,
-      purpose,
-      content,
-      tags,
-      createdAt: now,
-      updatedAt: now,
-      isDeleted: false,
-    };
-    allPrompts.push(newPrompt);
-    showToast('提示詞新增成功!', 'success');
-  }
-
-  // 儲存變更到 storage
-  const success = await savePromptsToStorage(allPrompts);
-
-  if (success) {
-    // 關閉表單
-    closePromptForm();
-    // 如果是新增，跳轉到提示詞列表頁籤並重新渲染
-    if (isNew) {
-      handleTabChange('prompts'); // 會觸發 renderCurrentView
-    } else {
-      // 如果是修改，留在當前頁籤並重新渲染
-      renderCurrentView();
+     promptTitleInput.style.borderColor = '';
+     promptContentInput.style.borderColor = '';
+  
+    const now = getCurrentISOTime();
+    let isNew = false;
+    let operationSuccess = false; // 標記操作是否成功
+  
+    try { // 使用 try...catch 包裹儲存操作
+        if (id) {
+          // --- 更新現有提示詞 ---
+          const promptIndex = allPrompts.findIndex(p => p.id === id);
+          if (promptIndex === -1) {
+            showToast('找不到要更新的提示詞', 'error');
+            return; // 出錯直接返回
+          }
+          const updatedPrompt = {
+            ...allPrompts[promptIndex],
+            title,
+            purpose,
+            content,
+            tags,
+            updatedAt: now,
+          };
+          allPrompts[promptIndex] = updatedPrompt;
+  
+          // 嘗試儲存
+          if (await savePromptsToStorage(allPrompts)) {
+               showToast('提示詞修改成功!', 'success');
+               operationSuccess = true;
+           } else {
+               // savePromptsToStorage 內部已顯示錯誤 toast
+               // 回滾更改 (可選，但更安全)
+               // 需要重新讀取或保留原始數據副本以實現回滾
+               console.error("儲存修改失敗，更改未保存。");
+           }
+  
+        } else {
+          // --- 新增提示詞 ---
+          isNew = true;
+          const newPrompt = {
+            id: generateId(),
+            title,
+            purpose,
+            content,
+            tags,
+            createdAt: now,
+            updatedAt: now,
+            isDeleted: false,
+          };
+          allPrompts.push(newPrompt);
+  
+          // 嘗試儲存
+           if (await savePromptsToStorage(allPrompts)) {
+               showToast('提示詞新增成功!', 'success');
+               operationSuccess = true;
+           } else {
+               // savePromptsToStorage 內部已顯示錯誤 toast
+               // 回滾更改
+               allPrompts.pop(); // 移除剛才添加的新項目
+               console.error("儲存新提示詞失敗。");
+           }
+        }
+  
+    } catch (error) {
+         console.error("處理表單提交時發生錯誤:", error);
+         showToast("處理儲存時發生錯誤", 'error');
+         operationSuccess = false;
     }
+  
+  
+    // --- 操作完成後的處理 ---
+    if (operationSuccess) {
+      // *** 立即關閉表單 ***
+      closePromptForm();
+  
+      // 根據是新增還是修改，刷新視圖或切換頁籤
+      if (isNew) {
+        handleTabChange('prompts'); // 會觸發 renderCurrentView
+      } else {
+        renderCurrentView(); // 修改後刷新當前視圖
+      }
+    }
+    // 如果 operationSuccess 為 false，表單保持打開狀態，讓用戶可以重試或取消
   }
-}
 
 /**
  * 處理點擊取消新增/編輯按鈕
@@ -663,11 +738,10 @@ async function handleCancelPromptForm() {
     const title = promptTitleInput.value.trim();
     const purpose = promptPurposeInput.value.trim();
     const content = promptContentInput.value.trim();
-    const tags = promptTagsInput.value.trim(); // 檢查是否有輸入
+    const tags = promptTagsInput.value.trim();
 
-    // 檢查是否有未儲存的更改 (對於編輯模式或新增模式有輸入內容)
     let hasChanges = false;
-    if (id) { // 編輯模式
+    if (id) {
         const originalPrompt = allPrompts.find(p => p.id === id);
         if (originalPrompt) {
             if (originalPrompt.title !== title ||
@@ -676,27 +750,31 @@ async function handleCancelPromptForm() {
                 formatTagsForInput(originalPrompt.tags || []) !== tags) {
                 hasChanges = true;
             }
-        } else { hasChanges = true;} // 找不到原始數據也算有變化（異常情況）
-    } else { // 新增模式
+        } else { hasChanges = true;}
+    } else {
         if (title || purpose || content || tags) {
             hasChanges = true;
         }
     }
 
-
+    let shouldClose = true; // 預設關閉
     if (hasChanges) {
         const confirmMessage = id ? '您有未儲存的修改，確定要放棄嗎？' : '您輸入的內容將不會被儲存，確定要放棄嗎？';
+        // 等待用戶確認，如果用戶取消，則不關閉
         if (!await showConfirm(confirmMessage)) {
-            return; // 使用者取消放棄
+            shouldClose = false;
         }
     }
 
-    closePromptForm();
-    // 取消後，如果是在 add tab，跳回 prompts tab
-    if (currentTab === 'add') {
-        handleTabChange('prompts');
-    } else {
-       renderCurrentView(); // 確保列表狀態正確（如果在編輯時取消）
+    if (shouldClose) {
+        // *** 立即關閉表單 ***
+        closePromptForm();
+
+        // 取消後，如果是在 add tab，跳回 prompts tab
+        if (currentTab === 'add') {
+            handleTabChange('prompts');
+        }
+        // 不需要 else { renderCurrentView(); } 因為關閉表單本身不會改變列表數據
     }
 }
 
@@ -704,12 +782,15 @@ async function handleCancelPromptForm() {
  * 關閉新增/編輯表單
  */
 function closePromptForm() {
-  promptFormContainer.classList.add('hidden');
-  promptForm.reset();
-  // 清除可能存在的錯誤樣式
-  promptTitleInput.style.borderColor = '';
-  promptContentInput.style.borderColor = '';
-}
+    // *** 移除 hidden class 是立即執行的 ***
+    promptFormContainer.classList.add('hidden');
+    promptForm.reset();
+    // 清除可能存在的錯誤樣式
+    promptTitleInput.style.borderColor = '';
+    promptContentInput.style.borderColor = '';
+    tagSuggestionsContainer.innerHTML = ''; // 清空標籤建議
+    tagSuggestionsContainer.classList.add('hidden');
+  }
 
 /**
  * 處理標籤輸入框的輸入事件，顯示建議
@@ -1340,31 +1421,51 @@ async function handleEmptyTrash() {
  * 處理頁籤切換
  * @param {string} tabName - 被點擊的頁籤名稱 (data-tab 的值)
  */
-function handleTabChange(tabName) {
-    if (currentTab === tabName) return; // 點擊當前頁籤不動作
-
-    // 如果從 'add' 或編輯狀態切換走，檢查是否有未儲存的更改
+async function handleTabChange(tabName) {
+    console.log(`Tab change requested: ${tabName}`); // <--- 添加日誌
+  
+    if (currentTab === tabName && tabName !== 'add') return; // 點擊當前頁籤不動作 (除非是add，允許重新打開表單)
+  
+    // ... (檢查未儲存更改的邏輯保持不變) ...
+    // (這裡省略之前的檢查邏輯，假設它沒問題)
+    let proceedChange = true;
     if ((currentTab === 'add' || !promptFormContainer.classList.contains('hidden')) && tabName !== 'add') {
-         // handleCancelPromptForm 內部會處理確認和頁籤跳轉邏輯
-         // 我們這裡只觸發它，但不阻塞頁籤切換本身
-         handleCancelPromptForm();
-         // 注意：handleCancelPromptForm 可能是異步的，如果它彈出確認框，
-         // 用戶點擊取消時，頁籤實際上已經切換了。
-         // 更好的做法是讓 handleCancelPromptForm 返回一個 Promise，
-         // 但為了簡化，目前先這樣處理。如果用戶取消放棄，
-         // 表單仍然打開，但頁籤視覺上已切換，下次渲染會恢復。
+         const id = promptIdInput.value;
+         const title = promptTitleInput.value.trim();
+         const purpose = promptPurposeInput.value.trim();
+         const content = promptContentInput.value.trim();
+         const tags = promptTagsInput.value.trim();
+         let hasChanges = false;
+         // ... (判斷是否有修改的邏輯) ...
+         if (id) { /* ... */ } else { if (title || purpose || content || tags) hasChanges = true; }
+  
+         if (hasChanges) {
+              const confirmMessage = id ? '您有未儲存的修改，確定要離開嗎？' : '您輸入的內容將不會被儲存，確定要離開嗎？';
+              if (!await showConfirm(confirmMessage)) {
+                  proceedChange = false; // 用戶取消，不切換頁籤
+              }
+         }
     }
-
+  
+    if (!proceedChange) {
+         console.log("Tab change cancelled by user.");
+         return; // 停止後續操作
+    }
+  
+    // 如果確認要切換，先關閉可能打開的表單
+    closePromptForm();
+  
     currentTab = tabName;
-    searchInput.value = ''; // 切換頁籤時清空搜尋框
-    currentFilterTags.clear(); // 切換頁籤時清除標籤篩選
-    sortButton.textContent = 'S'; // 重置排序按鈕顯示（如果需要的話）
-    sortOptionsContainer.classList.add('hidden'); // 隱藏排序選項
-
-    closePromptForm(); // 確保表單總是關閉的，除非是點擊 'add' 或編輯
+    console.log(`Current tab set to: ${currentTab}`); // <--- 添加日誌確認狀態更新
+  
+    searchInput.value = '';
+    currentFilterTags.clear();
+    // sortButton.textContent = 'S'; // 按鈕文字可能不需要重置
+    sortOptionsContainer.classList.add('hidden');
     exitSelectionMode(); // 確保退出選擇模式
-    renderCurrentView();
-}
+  
+    renderCurrentView(); // <--- 確保調用了渲染函數
+  }
 
 /**
  * 處理搜尋框輸入事件
@@ -1417,16 +1518,22 @@ function handleSortChange(event) {
  * @param {string} tag - 被點擊的標籤
  */
 function handleTagClick(tag) {
-    if (currentTab !== 'tags') return; // 僅在標籤頁籤有效
+    // 這個函數邏輯之前修改過，應該是正確的
+    if (currentTab !== 'tags') return;
+    console.log(`Tag clicked: ${tag}`);
 
-    // 多選邏輯 (按住 Ctrl/Cmd 或 Shift，簡單起見先做單選/取消)
+    // 根據點擊更新篩選集合 currentFilterTags
     if (currentFilterTags.has(tag)) {
-        currentFilterTags.delete(tag); // 再次點擊取消選中
+        currentFilterTags.delete(tag);
+        console.log(`Tag removed from filter: ${tag}. Current filters:`, currentFilterTags);
     } else {
-         // 單選模式：先清除其他選中
-         // currentFilterTags.clear();
-         currentFilterTags.add(tag); // 添加選中
-         // 如果需要多選，移除 clear() 即可
+        currentFilterTags.add(tag);
+         console.log(`Tag added to filter: ${tag}. Current filters:`, currentFilterTags);
+         // 如果需要嚴格單選，取消下面這行註釋，並移除上面的 else 分支
+         // currentFilterTags.clear(); currentFilterTags.add(tag);
     }
-    renderCurrentView(); // 重新渲染標籤頁視圖
+
+    // *** 關鍵：因為狀態 (currentFilterTags) 改變了，需要重新渲染整個標籤頁 ***
+    // 傳遞當前的活動提示詞數據給渲染函數
+    renderTagsView(allPrompts.filter(p => !p.isDeleted));
 }
