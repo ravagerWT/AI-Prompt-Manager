@@ -11,7 +11,8 @@
         <header>
             <h1>AI 提示詞管理助手</h1>
             <div class="search-container">
-                <input type="search" id="search-input" placeholder="搜尋標題、內容、標籤...">
+                <input type="search" id="search-input" placeholder="搜尋標題、內容、標籤..." autocomplete="off"> <!-- 添加 autocomplete="off" 避免瀏覽器干擾 -->
+                <div id="search-tag-suggestions" class="tag-suggestions hidden"></div> <!-- 搜尋標籤建議容器 -->
                 <button id="sort-button" class="icon-button" title="排序">S</button> <!-- 暫用文字代替圖標 -->
                 <div id="sort-options" class="sort-options hidden">
                     <button data-sort="updatedAt_desc">最近新增/修改</button>

@@ -9,6 +9,7 @@ let selectedPromptIds = new Set(); // 在選擇模式下選中的提示詞 ID
 
 // --- DOM 元素引用 ---
 const searchInput = document.getElementById('search-input');
+const searchTagSuggestionsContainer = document.getElementById('search-tag-suggestions'); // **新增**
 const sortButton = document.getElementById('sort-button');
 const sortOptionsContainer = document.getElementById('sort-options');
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -49,7 +50,8 @@ function setupEventListeners() {
   });
 
   // 搜尋輸入
-  searchInput.addEventListener('input', handleSearch);
+  searchInput.addEventListener('input', handleSearchInput); // **綁定新的主處理函數**
+  searchInput.addEventListener('keydown', handleSearchKeyDown); // **新增：處理 Enter/ESC 等鍵**
 
   // 排序按鈕與選項
   sortButton.addEventListener('click', toggleSortOptions);
@@ -64,7 +66,12 @@ function setupEventListeners() {
 
   // 標籤輸入建議 (簡單實現)
   promptTagsInput.addEventListener('input', handleTagInput);
+
+  // 點擊外部關閉邏輯**
+  document.addEventListener('click', handleClickOutside); // **統一處理外部點擊**
 }
+
+
 
 // --- 核心渲染與邏輯 ---
 
@@ -1682,11 +1689,164 @@ async function handleTabChange(tabName) {
   }
 
 /**
- * 處理搜尋框輸入事件
+ * 處理主搜尋框的輸入事件 (包含建議和觸發列表更新)
  */
-function handleSearch() {
-  // 不需要立即切換頁籤，直接重新渲染當前視圖即可
-  renderCurrentView();
+function handleSearchInput() {
+    const searchTerm = searchInput.value;
+    handleTagSuggestions(searchTerm); // 處理標籤建議顯示/隱藏
+    triggerRenderOnSearch(); // 觸發主列表的過濾和渲染
+}
+
+/**
+ * 處理標籤建議邏輯
+ * @param {string} currentInputValue - 當前搜尋框的值
+ */
+function handleTagSuggestions(currentInputValue) {
+    const lastHashIndex = currentInputValue.lastIndexOf('#');
+    let showSuggestions = false;
+    let suggestions = [];
+
+    // 條件：最後一個 '#' 後面有非空格字符
+    if (lastHashIndex !== -1) {
+        const potentialTagQuery = currentInputValue.substring(lastHashIndex + 1);
+        if (potentialTagQuery.length > 0 && !potentialTagQuery.includes(' ')) {
+            const tagQuery = potentialTagQuery.toLowerCase();
+            const uniqueTags = getUniqueActiveTags(); // 獲取所有可用標籤
+            suggestions = uniqueTags.filter(tag =>
+                // 忽略大小寫和開頭的 # 進行比較
+                tag.toLowerCase().substring(1).startsWith(tagQuery)
+            )
+            .sort() // 按字母排序
+            .slice(0, 7); // 最多顯示 7 個建議
+
+            if (suggestions.length > 0) {
+                showSuggestions = true;
+            }
+        }
+    }
+
+    renderSearchSuggestions(suggestions, showSuggestions);
+}
+
+/**
+ * 渲染搜尋框的標籤建議
+ * @param {string[]} suggestions - 要顯示的標籤建議陣列
+ * @param {boolean} show - 是否顯示建議框
+ */
+function renderSearchSuggestions(suggestions, show) {
+    if (!searchTagSuggestionsContainer) return; // 防禦性檢查
+
+    searchTagSuggestionsContainer.innerHTML = ''; // 清空舊建議
+    if (show && suggestions.length > 0) {
+        suggestions.forEach(tag => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = tag;
+            // 使用 mousedown 而不是 click，可以避免失去焦點導致建議框先隱藏
+            button.addEventListener('mousedown', (e) => {
+                 e.preventDefault(); // 防止輸入框失去焦點
+                 selectSearchTagSuggestion(tag);
+             });
+            searchTagSuggestionsContainer.appendChild(button);
+        });
+        searchTagSuggestionsContainer.classList.remove('hidden');
+    } else {
+        searchTagSuggestionsContainer.classList.add('hidden');
+    }
+}
+
+/**
+ * 處理選擇搜尋標籤建議的事件
+ * @param {string} selectedTag - 被選中的標籤
+ */
+function selectSearchTagSuggestion(selectedTag) {
+    const currentValue = searchInput.value;
+    const lastHashIndex = currentValue.lastIndexOf('#');
+
+    // 用選中的標籤替換從最後一個 # 開始的部分
+    if (lastHashIndex !== -1) {
+        searchInput.value = currentValue.substring(0, lastHashIndex) + selectedTag;
+    } else {
+        // 理論上不應發生，但作為備用
+        searchInput.value = selectedTag;
+    }
+
+    searchTagSuggestionsContainer.classList.add('hidden'); // 隱藏建議
+    searchInput.focus(); // 保持焦點
+    triggerRenderOnSearch(); // 立即觸發使用新值的搜索
+}
+
+/**
+ * 獲取所有唯一的、未刪除的提示詞標籤
+ * @returns {string[]} - 標籤陣列
+ */
+function getUniqueActiveTags() {
+    const uniqueTags = new Set();
+    allPrompts.filter(p => !p.isDeleted).forEach(p => {
+        (p.tags || []).forEach(tag => {
+            if (tag && typeof tag === 'string') {
+               uniqueTags.add(tag);
+            }
+        });
+    });
+    return Array.from(uniqueTags);
+}
+
+/**
+ * 處理搜尋框的按鍵事件 (例如 Enter, Escape)
+ * @param {KeyboardEvent} event
+ */
+function handleSearchKeyDown(event) {
+    const suggestionsVisible = !searchTagSuggestionsContainer.classList.contains('hidden');
+
+    if (suggestionsVisible) {
+        if (event.key === 'Escape') {
+             event.preventDefault(); // 阻止默認行為 (如清空輸入框)
+             searchTagSuggestionsContainer.classList.add('hidden'); // 隱藏建議
+        }
+        // 可以添加上下鍵選擇建議的邏輯 (較複雜，暫不實現)
+        // else if (event.key === 'ArrowDown') { ... }
+        // else if (event.key === 'ArrowUp') { ... }
+        // else if (event.key === 'Enter') { ... select highlighted suggestion ... }
+    }
+    // 按下 Enter 鍵時，即使建議不可見，也可能需要觸發搜索 (瀏覽器默認行為可能已處理)
+}
+
+/**
+ * 觸發主列表的過濾和重新渲染 (原 handleSearch 的核心)
+ */
+function triggerRenderOnSearch() {
+    // 這個函數不需要改變，它調用 renderCurrentView
+    renderCurrentView();
+}
+  
+/**
+ * 統一處理點擊外部區域隱藏下拉框的邏輯
+ * @param {MouseEvent} event
+ */
+function handleClickOutside(event) {
+    // 關閉排序選項
+    if (sortOptionsContainer && sortButton && // 添加檢查
+        !sortButton.contains(event.target) &&
+        !sortOptionsContainer.contains(event.target)) {
+        sortOptionsContainer.classList.add('hidden');
+    }
+
+    // 關閉搜尋建議
+    if (searchTagSuggestionsContainer && searchInput && // 添加檢查
+        !searchInput.contains(event.target) &&
+        !searchTagSuggestionsContainer.contains(event.target)) {
+        searchTagSuggestionsContainer.classList.add('hidden');
+    }
+
+    // 關閉表單標籤建議 (如果需要的話)
+    const formTagSuggestionsContainer = document.getElementById('tag-suggestions');
+    const formTagsInput = document.getElementById('prompt-tags');
+    if (formTagSuggestionsContainer && formTagsInput &&
+        !formTagsInput.contains(event.target) &&
+        !formTagSuggestionsContainer.contains(event.target)) {
+        formTagSuggestionsContainer.classList.add('hidden');
+    }
 }
 
 /**

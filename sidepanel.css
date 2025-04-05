@@ -32,6 +32,12 @@ header h1 {
   color: #374151;
 }
 
+header .search-container {
+    display: flex;
+    align-items: center;
+    position: relative; /* **確保是相對定位，以便絕對定位建議框** */
+}
+
 .search-container {
     display: flex;
     align-items: center;
@@ -45,6 +51,42 @@ header h1 {
   border-radius: 4px;
   font-size: 0.95em;
   margin-right: 5px;
+}
+
+/* **新增/修改：搜尋標籤建議樣式** */
+#search-tag-suggestions {
+    position: absolute;         /* 絕對定位 */
+    top: 100%;                  /* 定位在輸入框下方 */
+    left: 0;                    /* 左側對齊輸入框 */
+    right: 45px; /* 留出排序按鈕的空間，根據實際按鈕寬度調整 */
+    /* 或者 width: calc(100% - 45px); */
+    background-color: #fff;     /* 背景色 */
+    border: 1px solid #d1d5db;  /* 邊框 */
+    border-top: none;           /* 移除頂部邊框，與輸入框融合 */
+    border-radius: 0 0 4px 4px; /* 底部圓角 */
+    max-height: 150px;          /* 最大高度 */
+    overflow-y: auto;           /* 超出滾動 */
+    z-index: 20;                /* 比排序選項更高 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* 可選陰影 */
+}
+
+#search-tag-suggestions.hidden {
+    display: none !important;
+}
+
+/* 複用表單建議按鈕樣式 */
+#search-tag-suggestions button {
+    display: block;
+    width: 100%;
+    padding: 6px 10px; /* 調整 padding */
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.9em; /* 調整字體大小 */
+}
+#search-tag-suggestions button:hover {
+    background-color: #f3f4f6;
 }
 
 #sort-button {
@@ -67,7 +109,7 @@ header h1 {
     border: 1px solid #d1d5db;
     border-radius: 4px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    z-index: 10;
+    z-index: 15;
     display: flex;
     flex-direction: column;
 }
@@ -621,6 +663,19 @@ main#content-area {
 #prompt-form .required {
     color: #ef4444;
     margin-left: 4px;
+}
+#prompt-form .tag-suggestions {
+    /* ... form-specific styles if needed ... */
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    margin-top: -1px; /* 微調與輸入框的連接 */
+}
+#prompt-form .tag-suggestions button {
+    /* ... form-specific button styles ... */
+     padding: 5px 10px;
 }
 .form-actions, .confirm-actions {
     display: flex;
