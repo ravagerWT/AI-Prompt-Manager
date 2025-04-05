@@ -529,6 +529,42 @@ main#content-area {
     cursor: default; /* 在選擇模式下取消項目點擊 */
 }
 
+/* 插件資訊 Footer 樣式 */
+.plugin-footer {
+    display: flex;              /* 使用 Flexbox 水平排列 */
+    align-items: center;      /* 垂直居中對齊 */
+    gap: 8px;                 /* 元素之間的間距 */
+    padding: 12px 0;          /* 上下內邊距 */
+    margin-top: 25px;         /* 與上方內容的間距 */
+    border-top: 1px solid #e5e7eb; /* 頂部分隔線 */
+    font-size: 0.85em;        /* 稍小的字體 */
+    color: #6b7280;           /* 灰色文字 */
+}
+
+.plugin-footer a.footer-icon-link {
+    display: inline-flex; /* 讓連結尺寸貼合圖片 */
+    vertical-align: middle; /* 幫助對齊 */
+    line-height: 0; /* 移除連結可能帶來的額外行高 */
+}
+
+.plugin-footer .footer-icon {
+    width: 16px;              /* 圖標寬度 */
+    height: 16px;             /* 圖標高度 */
+    vertical-align: middle; /* 確保圖片與文字基線對齊 */
+}
+
+.plugin-footer .footer-text {
+    flex-grow: 1;             /* 讓文字佔據中間的剩餘空間 (可選) */
+    /* 如果希望版本號靠右，這個可以不需要 */
+    white-space: nowrap; /* 防止文字換行 */
+}
+
+.plugin-footer .footer-version {
+    /* margin-left: auto; */ /* 如果想讓版本號強制靠最右邊，取消註釋此行 */
+    white-space: nowrap; /* 防止版本號換行 */
+    font-weight: 500; /* 讓版本號稍微突出 */
+    color: #4b5563;
+}
 
 /* 表單樣式 */
 #prompt-form-container, #confirm-dialog {

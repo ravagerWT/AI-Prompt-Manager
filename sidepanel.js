@@ -349,7 +349,6 @@ function createPromptListItem(prompt) {
     return li;
 }
 
-
 /**
  * 渲染標籤視圖
  * @param {Array} activePrompts - 所有未刪除的提示詞 (從 allPrompts 過濾 isDeleted=false 得來)
@@ -360,21 +359,21 @@ function renderTagsView(activePrompts) {
 
     // --- 1. 渲染標籤雲 ---
     const allTags = new Set();
-    activePrompts.forEach(p => {
-        (p.tags || []).forEach(tag => {
-            if (tag && typeof tag === 'string') {
-               allTags.add(tag);
-            } else {
-               console.warn("發現無效標籤格式:", tag, "來自提示詞ID:", p.id);
-            }
-        });
-    });
+    activePrompts.forEach(p => { (p.tags || []).forEach(tag => { /* ... */ allTags.add(tag); }); });
     const sortedTags = Array.from(allTags).sort();
-    console.log('Unique tags for cloud:', sortedTags);
 
     const tagListContainer = document.createElement('div');
-    tagListContainer.className = 'tag-list-container';
-    tagListContainer.innerHTML = `<h3>所有標籤 (${sortedTags.length})</h3>`; // 保持 H3
+    // ... (設置 class, sticky 樣式等) ...
+    tagListContainer.className = 'tag-list-container'; // Make sure sticky styles are applied
+    tagListContainer.style.position = 'sticky';
+    tagListContainer.style.top = '-1px'; // or 0
+    tagListContainer.style.backgroundColor = '#f4f4f5'; // Match background
+    tagListContainer.style.zIndex = '10';
+    tagListContainer.style.paddingBottom = '10px';
+    tagListContainer.style.borderBottom = '1px solid #eee';
+    tagListContainer.style.paddingTop = '1px'; // If using top: -1px
+
+    tagListContainer.innerHTML = `<h3>所有標籤 (${sortedTags.length})</h3>`;
 
     const tagCloud = document.createElement('div');
     tagCloud.className = 'tag-cloud';
@@ -388,7 +387,8 @@ function renderTagsView(activePrompts) {
             if (currentFilterTags.has(tag)) { // 檢查是否在當前篩選條件中
                 tagElement.classList.add('selected');
             }
-            tagElement.addEventListener('click', () => handleTagClick(tag)); // 監聽點擊
+            // *** 修改：傳遞 event 對象給 handleTagClick ***
+            tagElement.addEventListener('click', (event) => handleTagClick(tag, event));
             tagCloud.appendChild(tagElement);
         });
         // 添加清除篩選按鈕 (當有篩選條件時)
@@ -417,23 +417,19 @@ function renderTagsView(activePrompts) {
     // 決定要顯示哪些提示詞
     let promptsToShow;
     if (currentFilterTags.size > 0) {
-        console.log(`Filtering active prompts by tags:`, currentFilterTags);
+        // ... (篩選 promptsToShow 的邏輯) ...
         promptsToShow = activePrompts.filter(prompt => {
              const promptTags = new Set(prompt.tags || []);
              let matchesAll = true;
              for (const filterTag of currentFilterTags) {
                  if (!promptTags.has(filterTag)) {
                      matchesAll = false;
-                     break; // 只要有一個篩選標籤不匹配，就停止檢查該提示詞
+                     break;
                  }
              }
-             // console.log(`Prompt "${prompt.title}" matches filter? ${matchesAll}`); // 可選的詳細日誌
              return matchesAll;
         });
-        console.log(`${promptsToShow.length} prompts matched the filter.`);
     } else {
-         // 沒有篩選條件，顯示所有活動提示詞
-         console.log('No filter tags selected, showing all active prompts.');
          promptsToShow = activePrompts;
     }
 
@@ -441,15 +437,17 @@ function renderTagsView(activePrompts) {
     const listContainer = document.createElement('div');
     listContainer.id = 'tags-prompt-list-container'; // 給一個唯一 ID 方便調試
 
-    const listTitle = document.createElement('h4'); // 使用 H4 與 H3 區分
-    listTitle.style.marginTop = '20px'; // 增加與標籤雲的間距
-    listTitle.style.marginBottom = '10px';
-    if (currentFilterTags.size > 0) {
-        listTitle.textContent = `包含標籤 "${Array.from(currentFilterTags).join(' & ')}" 的提示詞 (${promptsToShow.length})：`;
-    } else {
-        listTitle.textContent = `所有提示詞 (${activePrompts.length})：`;
-    }
-    listContainer.appendChild(listTitle); // 將標題添加到列表容器
+    const listTitle = document.createElement('h4');
+    // ... (設置 listTitle 的樣式和文本) ...
+     listTitle.style.marginTop = '20px';
+     listTitle.style.marginBottom = '10px';
+     if (currentFilterTags.size > 0) {
+         // For multiple tags, use ' & '
+         listTitle.textContent = `包含標籤 "${Array.from(currentFilterTags).join(' & ')}" 的提示詞 (${promptsToShow.length})：`;
+     } else {
+         listTitle.textContent = `所有提示詞 (${activePrompts.length})：`;
+     }
+    listContainer.appendChild(listTitle);
 
     // 創建列表元素 (ul)
     const listElement = document.createElement('ul');
@@ -466,7 +464,6 @@ function renderTagsView(activePrompts) {
         });
     }
     listContainer.appendChild(listElement); // 將列表 ul 添加到列表容器
-
     contentArea.appendChild(listContainer); // *** 將包含標題和列表的容器添加到 contentArea ***
 
     console.log('Prompt list rendered in tags view.');
@@ -548,29 +545,25 @@ function renderTrashView(deletedPrompts) {
  * 渲染匯入/匯出視圖
  */
 function renderImportExportView() {
-    contentArea.innerHTML = `
+    console.log("renderImportExportView: Function started."); // 日誌：函數開始
+
+    // --- 準備 HTML 結構 (保持不變) ---
+    const importExportHTML = `
         <div class="import-export-section">
-            <!-- ** 新容器，包含標題和部分匯出按鈕 ** -->
             <div class="export-heading-container">
                 <h3>匯出提示詞</h3>
-                <!-- ** 部分匯出時顯示的操作按鈕 (初始隱藏) ** -->
                 <div id="partial-export-action-buttons" class="hidden">
-                    <button id="confirm-partial-export" class="primary" disabled>匯出選取項目 (0)</button> <!-- Add initial state -->
+                    <button id="confirm-partial-export" class="primary" disabled>匯出選取項目 (0)</button>
                     <button id="cancel-partial-export">取消</button>
                 </div>
             </div>
-
-            <!-- ** 初始的操作按鈕 (部分/全部) ** -->
             <div class="import-export-actions" id="export-actions">
                 <button id="export-partial-button">部分匯出...</button>
                 <button id="export-all-button">全部匯出為 JSON</button>
             </div>
-
-            <!-- ** 部分匯出時顯示的列表容器 ** -->
             <div id="partial-export-list-container" class="hidden">
                 <h4>選擇要匯出的提示詞：</h4>
                 <ul id="partial-export-list" class="prompt-list"></ul>
-                <!-- ** 按鈕已移到上方 ** -->
             </div>
         </div>
 
@@ -584,12 +577,115 @@ function renderImportExportView() {
         </div>
     `;
 
-    // 添加事件監聽器
-    document.getElementById('export-partial-button').addEventListener('click', enterPartialExportMode);
-    document.getElementById('export-all-button').addEventListener('click', handleExportAll);
-    document.getElementById('import-file').addEventListener('change', handleImportFile);
+    const footerHTML = `
+        <footer class="plugin-footer">
+            <a href="https://example.com" target="_blank" rel="noopener noreferrer" title="點擊前往官方網站" class="footer-icon-link">
+                <img src="icons/icon16.png" alt="插件圖標" class="footer-icon">
+            </a>
+            <span class="footer-text">點擊左側圖標前往官方網站</span>
+            <span id="footer-version-info" class="footer-version">v....</span>
+        </footer>
+    `;
 
-    // 部分匯出相關按鈕的監聽器在 enterPartialExportMode 中添加
+    // --- 1. 更新 DOM ---
+    console.log("renderImportExportView: Setting innerHTML...");
+    try {
+        contentArea.innerHTML = importExportHTML + footerHTML;
+        console.log("renderImportExportView: innerHTML assignment completed.");
+    } catch (error) {
+        console.error("renderImportExportView: Error during innerHTML assignment:", error);
+        contentArea.innerHTML = "<p style='color:red;'>載入匯入/匯出介面時發生錯誤。</p>"; // 提供錯誤回饋
+        return; // 如果 innerHTML 設置失敗，後續操作無意義
+    }
+
+
+    // --- 2. **延遲執行**後續操作 (確保 DOM 更新) ---
+    // 使用 requestAnimationFrame 或 setTimeout 0
+    // requestAnimationFrame 通常更好，它會在下一次瀏覽器重繪前執行
+    requestAnimationFrame(() => {
+        console.log("renderImportExportView: Running post-render setup (requestAnimationFrame)...");
+        try {
+            // --- 查找必要的元素 ---
+            const exportPartialBtn = document.getElementById('export-partial-button');
+            const exportAllBtn = document.getElementById('export-all-button');
+            const importFileElement = document.getElementById('import-file');
+            const footerElement = contentArea.querySelector('.plugin-footer'); // 使用 querySelector
+            const versionElement = document.getElementById('footer-version-info');
+
+            // --- 檢查 Footer 是否存在 ---
+            if (footerElement) {
+                console.log("renderImportExportView: Footer element found.");
+                // --- 填充版本號 ---
+                if (versionElement) {
+                    console.log("renderImportExportView: Version element found.");
+                    try {
+                        const manifest = chrome.runtime.getManifest();
+                        if (manifest && manifest.version) {
+                            versionElement.textContent = `v${manifest.version}`;
+                            console.log("renderImportExportView: Version set to:", manifest.version);
+                        } else {
+                            versionElement.textContent = 'v?.?.?';
+                            console.warn("renderImportExportView: Could not get version from manifest object:", manifest);
+                        }
+                    } catch (e) {
+                        console.error("renderImportExportView: Error getting manifest or setting version:", e);
+                        versionElement.textContent = 'v?.?.?';
+                    }
+                } else {
+                    console.error("renderImportExportView: #footer-version-info element NOT FOUND inside footer!");
+                }
+            } else {
+                console.error("renderImportExportView: Footer element (.plugin-footer) NOT FOUND after setting innerHTML!");
+                // 如果 Footer 沒找到，可能 HTML 結構或 CSS 有問題
+                // 檢查 Elements 面板確認結構和 CSS 樣式 (如 display: none)
+            }
+
+
+            // --- 綁定事件監聽器 ---
+            if (exportPartialBtn) {
+                console.log("renderImportExportView: Binding listener to Partial Export button.");
+                // **確保移除舊監聽器 (如果可能重複渲染)**
+                // 雖然每次設置 innerHTML 會移除舊的，但為了健壯性，可以這樣寫
+                // 或者確保 renderImportExportView 不會在無需刷新的情況下被調用
+                exportPartialBtn.removeEventListener('click', enterPartialExportMode); // 移除舊的 (如果存在)
+                exportPartialBtn.addEventListener('click', enterPartialExportMode);
+                 // **檢查按鈕是否被禁用**
+                 if (exportPartialBtn.disabled) {
+                    console.warn("Partial export button is disabled.");
+                 } else {
+                    console.log("Partial export button is enabled.")
+                 }
+            } else {
+                console.error("renderImportExportView: #export-partial-button not found!");
+            }
+
+            if (exportAllBtn) {
+                console.log("renderImportExportView: Binding listener to Export All button.");
+                exportAllBtn.removeEventListener('click', handleExportAll);
+                exportAllBtn.addEventListener('click', handleExportAll);
+                 if (exportAllBtn.disabled) {
+                    console.warn("Export all button is disabled.");
+                 } else {
+                     console.log("Export all button is enabled.")
+                 }
+            } else {
+                console.error("renderImportExportView: #export-all-button not found!");
+            }
+
+            if (importFileElement) {
+                console.log("renderImportExportView: Binding listener to Import file input.");
+                importFileElement.removeEventListener('change', handleImportFile);
+                importFileElement.addEventListener('change', handleImportFile);
+            } else {
+                console.error("renderImportExportView: #import-file not found!");
+            }
+
+            console.log("renderImportExportView: Post-render setup finished.");
+
+        } catch (error) {
+             console.error("renderImportExportView: Error during post-render setup:", error);
+        }
+    }); // 結束 requestAnimationFrame
 }
 
 
@@ -1634,24 +1730,40 @@ function handleSortChange(event) {
 /**
  * 處理標籤雲中標籤的點擊事件 (用於篩選)
  * @param {string} tag - 被點擊的標籤
+ * @param {MouseEvent} event - 原始的點擊事件對象
  */
-function handleTagClick(tag) {
-    // 這個函數邏輯之前修改過，應該是正確的
+function handleTagClick(tag, event) {
     if (currentTab !== 'tags') return;
-    console.log(`Tag clicked: ${tag}`);
+    console.log(`Tag clicked: ${tag}, Ctrl/Cmd pressed: ${event.ctrlKey || event.metaKey}`);
 
-    // 根據點擊更新篩選集合 currentFilterTags
-    if (currentFilterTags.has(tag)) {
-        currentFilterTags.delete(tag);
-        console.log(`Tag removed from filter: ${tag}. Current filters:`, currentFilterTags);
+    const isMultiSelectModifier = event.ctrlKey || event.metaKey; // 檢查是否按下了 Ctrl 或 Cmd
+
+    if (isMultiSelectModifier) {
+        // --- 多選/切換邏輯 (按住 Ctrl/Cmd) ---
+        if (currentFilterTags.has(tag)) {
+            // 如果已選中，則移除
+            currentFilterTags.delete(tag);
+            console.log(`Tag removed (multi-select): ${tag}. Current filters:`, currentFilterTags);
+        } else {
+            // 如果未選中，則添加
+            currentFilterTags.add(tag);
+            console.log(`Tag added (multi-select): ${tag}. Current filters:`, currentFilterTags);
+        }
     } else {
-        currentFilterTags.add(tag);
-         console.log(`Tag added to filter: ${tag}. Current filters:`, currentFilterTags);
-         // 如果需要嚴格單選，取消下面這行註釋，並移除上面的 else 分支
-         // currentFilterTags.clear(); currentFilterTags.add(tag);
+        // --- 單選邏輯 (直接點擊) ---
+        // 檢查是否點擊了已經是唯一選中的標籤
+        if (currentFilterTags.size === 1 && currentFilterTags.has(tag)) {
+            // 如果是，則取消篩選 (恢復顯示全部)
+            currentFilterTags.clear();
+            console.log(`Tag deselected (was only one): ${tag}. Filter cleared.`);
+        } else {
+            // 否則，清除所有現有篩選，只選中當前點擊的標籤
+            currentFilterTags.clear();
+            currentFilterTags.add(tag);
+            console.log(`Filter set to single tag (direct click): ${tag}.`);
+        }
     }
 
-    // *** 關鍵：因為狀態 (currentFilterTags) 改變了，需要重新渲染整個標籤頁 ***
-    // 傳遞當前的活動提示詞數據給渲染函數
+    // 狀態已更新，重新渲染標籤頁視圖
     renderTagsView(allPrompts.filter(p => !p.isDeleted));
 }
