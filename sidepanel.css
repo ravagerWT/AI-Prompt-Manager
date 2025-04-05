@@ -288,12 +288,28 @@ main#content-area {
 .prompt-actions .icon-button.danger:hover {
     color: #ef4444;
 }
+#tags-prompt-list-container .prompt-list {
+    /* 列表樣式保持不變 */
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
 
 /* 標籤頁 */
 .tag-list-container {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    /* --- 新增/修改的樣式 --- */
+    position: sticky;       /* 啟用 sticky 定位 */
+    top: -1px;             /* 相對於滾動父容器的頂部固定。用 -1px 可以稍微隱藏頂部邊框 */
+                           /* 或者用 top: 0; 如果想看到完整邊框 */
+    background-color: #f4f4f5; /* **非常重要**: 設置背景色，防止下方內容透視 */
+                           /* 使用與 main#content-area 或 body 相同的背景色 */
+    z-index: 10;            /* 確保它在滾動內容之上 */
+
+    /* --- 保留原有樣式 --- */
+    margin-bottom: 0; /* Sticky 後，下邊距由下方元素控制 */
+    padding-bottom: 10px; /* 保留下內邊距 */
+    border-bottom: 1px solid #eee; /* 保留底邊框作為分隔 */
+    padding-top: 1px; /* 配合 top: -1px，讓內容看起來在原位 */
 }
 .tag-list-container h3 {
     margin-top: 0;
@@ -333,7 +349,16 @@ main#content-area {
     padding: 5px;
     margin-left: 10px;
 }
+#tags-prompt-list-container {
+    /* 這個容器不需要特殊樣式，但其內部的 h4 需要 margin-top */
+}
 
+#tags-prompt-list-container h4 { /* 列表標題 */
+   margin-top: 20px; /* **確保與 sticky header 有足夠間距** */
+   margin-bottom: 10px;
+   font-size: 1em; /* Use consistent font size */
+   color: #374151;
+}
 
 /* 垃圾桶頁 */
 .trash-actions {
