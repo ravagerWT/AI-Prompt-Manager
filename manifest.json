@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "AI 提示詞管理助手",
-    "version": "1.0.0",
-    "description": "方便地儲存、管理、搜尋、使用及分享 AI 提示詞。",
+    "version": "0.1.0",
+    "description": "提供使用者一個方便、高效的方式來儲存、管理、搜尋、使用及分享 AI 提示詞 (Prompts)，提升使用者與 AI 互動的效率。",
     "icons": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

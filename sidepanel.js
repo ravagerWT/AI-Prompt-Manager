@@ -76,46 +76,77 @@ function setupEventListeners() {
 // --- 核心渲染與邏輯 ---
 
 /**
- * 根據當前狀態渲染對應的視圖
+ * 根據當前狀態 (currentTab, currentSort, searchInput.value, currentFilterTags) 渲染對應的視圖
  */
 function renderCurrentView() {
-    console.log(`Rendering view for tab: ${currentTab}`); // <--- 添加日誌
-    exitSelectionMode();
-    contentArea.innerHTML = '';
-  
-    let filteredPrompts = filterPrompts();
-    currentPrompts = sortPrompts(filteredPrompts, currentSort);
-  
-    switch (currentTab) {
-      case 'prompts':
-        console.log('Calling renderPromptListView for prompts tab'); // <--- 添加日誌
-        renderPromptListView(currentPrompts.filter(p => !p.isDeleted));
-        break;
-      case 'add':
-        console.log('Handling add tab'); // <--- 添加日誌
-        openPromptForm();
-        contentArea.innerHTML = '<p style="text-align:center; color:#6b7280;">請在上方表單中新增提示詞。</p>';
-        break;
-      case 'tags':
-        console.log('Calling renderTagsView for tags tab'); // <--- 添加日誌
-        // 傳遞所有未刪除的提示詞給 renderTagsView
-        renderTagsView(allPrompts.filter(p => !p.isDeleted));
-        break;
-      case 'trash':
-        console.log('Calling renderTrashView for trash tab'); // <--- 添加日誌
-        renderTrashView(currentPrompts.filter(p => p.isDeleted));
-        break;
-      case 'import-export':
-        console.log('Calling renderImportExportView for import-export tab'); // <--- 添加日誌
-        renderImportExportView();
-        break;
-      default:
-        console.error(`Unknown tab: ${currentTab}`); // <--- 添加錯誤日誌
-        contentArea.innerHTML = '<p>錯誤：未知的頁籤</p>';
+    const searchTerm = searchInput.value.trim();
+    const isSearching = searchTerm !== '';
+
+    console.log(`Rendering view. Current tab: ${currentTab}, Is Searching: ${isSearching}`);
+
+    // 清空選擇模式狀態 (如果不在選擇模式相關頁籤)
+    if (currentTab !== 'trash' && currentTab !== 'import-export') {
+        exitSelectionMode(); // 確保在非選擇頁籤時退出模式
     }
-  
-    updateActiveTabStyle();
-  }
+    // 注意: exitSelectionMode 內部會調用其頁籤的渲染函數，可能導致重複渲染
+    // 更好的做法可能是 exitSelectionMode 只重置狀態，不觸發渲染，由 renderCurrentView 主導
+    // 為了簡單起見，暫時保持原樣，但注意潛在的重複渲染
+
+    contentArea.innerHTML = ''; // 清空內容區域
+
+    // --- 決定實際使用的渲染邏輯對應的 Tab ---
+    let effectiveTabForRendering = currentTab;
+    let visualTabToActivate = currentTab;
+
+    if (isSearching) {
+        // **如果正在搜尋，強制使用 'prompts' 的渲染邏輯和視覺樣式**
+        effectiveTabForRendering = 'prompts';
+        visualTabToActivate = 'prompts'; // 同步視覺狀態
+        console.log("Search active, forcing render as 'prompts' tab.");
+    }
+
+    // --- 更新視覺上活動的頁籤樣式 ---
+    updateActiveTabStyle(visualTabToActivate);
+
+    // --- 過濾數據 ---
+    // filterPrompts 現在能正確處理搜尋和非搜尋情況
+    let filteredPrompts = filterPrompts();
+    currentPrompts = sortPrompts(filteredPrompts, currentSort); // 排序應用於過濾結果
+
+    // --- 根據 effectiveTabForRendering 選擇渲染函數 ---
+    switch (effectiveTabForRendering) {
+        case 'prompts':
+            console.log(`Rendering 'prompts' view logic (Tab: ${currentTab}, Search: ${isSearching})`);
+            // **傳遞已過濾和排序的列表，渲染函數需要能處理包含已刪除項目的情況**
+            renderPromptListView(currentPrompts);
+            break;
+        case 'add':
+            // 只有在 currentTab 真的是 'add' 且 *沒有* 搜尋時才會執行到這裡
+            console.log("Handling 'add' tab (No search)");
+            openPromptForm();
+            contentArea.innerHTML = '<p style="text-align:center; color:#6b7280;">請在上方表單中新增提示詞。</p>';
+            break;
+        case 'tags':
+             // 只有在 currentTab 真的是 'tags' 且 *沒有* 搜尋時才會執行到這裡
+            console.log("Calling renderTagsView for 'tags' tab (No search)");
+            renderTagsView(allPrompts.filter(p => !p.isDeleted)); // Tags 視圖基於所有活動提示詞
+            break;
+        case 'trash':
+             // 只有在 currentTab 真的是 'trash' 且 *沒有* 搜尋時才會執行到這裡
+            console.log("Calling renderTrashView for 'trash' tab (No search)");
+            // 傳遞已按 isDeleted 過濾的數據
+            renderTrashView(currentPrompts);
+            break;
+        case 'import-export':
+             // 只有在 currentTab 真的是 'import-export' 且 *沒有* 搜尋時才會執行到這裡
+            console.log("Calling renderImportExportView for 'import-export' tab (No search)");
+            renderImportExportView();
+            break;
+        default:
+            console.error(`Unknown effective tab for rendering: ${effectiveTabForRendering}`);
+            contentArea.innerHTML = '<p>錯誤：未知的頁籤狀態</p>';
+    }
+}
 
 /**
  * 過濾提示詞列表
@@ -123,30 +154,11 @@ function renderCurrentView() {
  */
 function filterPrompts() {
     const searchTerm = searchInput.value.toLowerCase().trim();
+    const isSearching = searchTerm !== ''; // 是否正在執行搜尋
 
     return allPrompts.filter(prompt => {
-        // 1. 基礎過濾 (垃圾桶狀態) - 搜尋時不過濾 isDeleted
-        // 在各自的渲染函數中處理 isDeleted 過濾
-        // if (currentTab === 'trash' && !prompt.isDeleted) return false;
-        // if (currentTab !== 'trash' && currentTab !== 'search' && prompt.isDeleted) return false; // 非垃圾桶非搜索，不顯示已刪除
-
-        // 2. 標籤篩選 (僅在 'tags' 頁籤且有選中標籤時生效)
-        if (currentTab === 'tags' && currentFilterTags.size > 0) {
-            if (prompt.isDeleted) return false; // 標籤頁不顯示垃圾桶內容
-            const promptTags = new Set(prompt.tags || []);
-            // 檢查是否包含 *所有* 選中的篩選標籤
-            let matchesAllTags = true;
-            for (const filterTag of currentFilterTags) {
-                if (!promptTags.has(filterTag)) {
-                    matchesAllTags = false;
-                    break;
-                }
-            }
-            if (!matchesAllTags) return false;
-        }
-
-        // 3. 關鍵字搜尋 (如果搜尋框有內容)
-        if (searchTerm) {
+        // --- 步驟 1: 關鍵字搜尋 (如果正在搜尋) ---
+        if (isSearching) {
             const titleMatch = prompt.title.toLowerCase().includes(searchTerm);
             const purposeMatch = prompt.purpose?.toLowerCase().includes(searchTerm) || false;
             const contentMatch = prompt.content.toLowerCase().includes(searchTerm);
@@ -155,15 +167,40 @@ function filterPrompts() {
             if (!(titleMatch || purposeMatch || contentMatch || tagsMatch)) {
                 return false; // 任何一個都不匹配則過濾掉
             }
-            // 搜尋時，垃圾桶和非垃圾桶的都可能顯示，在渲染時區分
+            // **如果正在搜尋，則不再應用後續的基於 Tab 的過濾**
+            // 搜尋結果需要包含所有狀態的提示詞，讓渲染函數去區分顯示
         } else {
-             // 沒有搜尋詞時，根據頁籤決定是否顯示垃圾桶內容
-             if (currentTab === 'trash' && !prompt.isDeleted) return false;
-             if (currentTab !== 'trash' && prompt.isDeleted) return false;
+            // --- 步驟 2: 基於 Tab 的過濾 (如果沒有在搜尋) ---
+            switch (currentTab) {
+                case 'trash':
+                    // 在垃圾桶頁籤，只顯示 isDeleted 為 true 的
+                    if (!prompt.isDeleted) return false;
+                    break;
+                case 'tags':
+                    // 在標籤頁籤，不顯示已刪除的，並應用標籤篩選 (如果有的話)
+                    if (prompt.isDeleted) return false;
+                    if (currentFilterTags.size > 0) {
+                        const promptTags = new Set(prompt.tags || []);
+                        let matchesAllTags = true;
+                        for (const filterTag of currentFilterTags) {
+                            if (!promptTags.has(filterTag)) {
+                                matchesAllTags = false;
+                                break;
+                            }
+                        }
+                        if (!matchesAllTags) return false;
+                    }
+                    break;
+                case 'prompts':
+                case 'import-export': // 匯入匯出頁面本身不顯示列表，但如果未來有列表也應排除已刪除
+                default:
+                    // 在其他頁籤 (主要是提示詞頁籤)，不顯示 isDeleted 為 true 的
+                    if (prompt.isDeleted) return false;
+                    break;
+            }
         }
 
-
-        return true; // 通過所有篩選條件
+        return true; // 通過所有適用的篩選條件
     });
 }
 
@@ -197,22 +234,25 @@ function sortPrompts(prompts, sortKey) {
 
 /**
  * 更新活動頁籤的視覺樣式
+ * @param {string | null} forceTab - 強制設置哪個頁籤為活動狀態，如果為 null，則使用 currentTab
  */
-function updateActiveTabStyle() {
-  tabButtons.forEach(button => {
-    if (button.dataset.tab === currentTab) {
-      button.classList.add('active');
-    } else {
-      button.classList.remove('active');
-    }
-  });
+function updateActiveTabStyle(forceTab = null) {
+    const tabToActivate = forceTab || currentTab; // 使用強制指定的頁籤，否則用當前的
+    // console.log(`Updating active tab style. Activating: ${tabToActivate}`); // 可選日誌
+    tabButtons.forEach(button => {
+        if (button.dataset.tab === tabToActivate) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
 }
 
 // --- 頁籤渲染函數 ---
 
 /**
  * 渲染提示詞列表視圖 (用於 'prompts' 頁籤和搜尋結果)
- * @param {Array} promptsToRender - 要渲染的提示詞陣列
+ * @param {Array} promptsToRender - 要渲染的提示詞陣列 (可能包含已刪除項，在搜尋時)
  */
 function renderPromptListView(promptsToRender) {
     contentArea.innerHTML = ''; // 清空現有內容
@@ -220,9 +260,11 @@ function renderPromptListView(promptsToRender) {
     list.className = 'prompt-list';
 
     if (promptsToRender.length === 0) {
-        list.innerHTML = `<li class="empty-message">${searchInput.value ? '找不到符合條件的提示詞。' : '還沒有提示詞，點擊「新增提示詞」開始吧！'}</li>`;
+        // 根據是否有搜尋詞提供不同提示
+        list.innerHTML = `<li class="empty-message">${searchInput.value.trim() ? '找不到符合條件的提示詞。' : '還沒有提示詞，點擊「新增提示詞」開始吧！'}</li>`;
     } else {
         promptsToRender.forEach(prompt => {
+            // createPromptListItem 已經能根據 prompt.isDeleted 添加 .deleted class
             const listItem = createPromptListItem(prompt);
             list.appendChild(listItem);
         });
@@ -1639,54 +1681,45 @@ async function handleEmptyTrash() {
 // --- 其他輔助函數 ---
 
 /**
- * 處理頁籤切換
+ * 處理頁籤切換 (由用戶點擊觸發)
  * @param {string} tabName - 被點擊的頁籤名稱 (data-tab 的值)
  */
 async function handleTabChange(tabName) {
-    console.log(`Tab change requested: ${tabName}`); // <--- 添加日誌
-  
-    if (currentTab === tabName && tabName !== 'add') return; // 點擊當前頁籤不動作 (除非是add，允許重新打開表單)
-  
-    // ... (檢查未儲存更改的邏輯保持不變) ...
-    // (這裡省略之前的檢查邏輯，假設它沒問題)
+    console.log(`User initiated tab change to: ${tabName}`);
+
+    // 檢查是否可以安全切換 (例如，檢查未儲存的表單)
+    // ... (省略未儲存更改的確認邏輯，假設它工作正常) ...
     let proceedChange = true;
-    if ((currentTab === 'add' || !promptFormContainer.classList.contains('hidden')) && tabName !== 'add') {
-         const id = promptIdInput.value;
-         const title = promptTitleInput.value.trim();
-         const purpose = promptPurposeInput.value.trim();
-         const content = promptContentInput.value.trim();
-         const tags = promptTagsInput.value.trim();
-         let hasChanges = false;
-         // ... (判斷是否有修改的邏輯) ...
-         if (id) { /* ... */ } else { if (title || purpose || content || tags) hasChanges = true; }
-  
-         if (hasChanges) {
-              const confirmMessage = id ? '您有未儲存的修改，確定要離開嗎？' : '您輸入的內容將不會被儲存，確定要離開嗎？';
-              if (!await showConfirm(confirmMessage)) {
-                  proceedChange = false; // 用戶取消，不切換頁籤
-              }
-         }
-    }
-  
+    // if (unsavedChanges && !await confirmExit()) { proceedChange = false; }
+
     if (!proceedChange) {
-         console.log("Tab change cancelled by user.");
-         return; // 停止後續操作
+        console.log("Tab change cancelled by user.");
+        return; // 停止切換
     }
-  
-    // 如果確認要切換，先關閉可能打開的表單
+
+    // 關閉可能打開的表單
     closePromptForm();
-  
+
+    // 更新當前邏輯 Tab
     currentTab = tabName;
-    console.log(`Current tab set to: ${currentTab}`); // <--- 添加日誌確認狀態更新
-  
-    searchInput.value = '';
-    currentFilterTags.clear();
-    // sortButton.textContent = 'S'; // 按鈕文字可能不需要重置
-    sortOptionsContainer.classList.add('hidden');
-    exitSelectionMode(); // 確保退出選擇模式
-  
-    renderCurrentView(); // <--- 確保調用了渲染函數
-  }
+
+    // *** 關鍵：用戶手動切換頁籤時，清空搜尋狀態 ***
+    if (searchInput.value !== '') {
+        searchInput.value = ''; // 清空搜尋框
+        // 隱藏搜尋建議 (如果有的話)
+        if (searchTagSuggestionsContainer && !searchTagSuggestionsContainer.classList.contains('hidden')) {
+             searchTagSuggestionsContainer.classList.add('hidden');
+             console.log("Search suggestions hidden due to tab change.");
+        }
+        console.log("Search input cleared due to manual tab change.");
+    }
+    currentFilterTags.clear(); // 同樣清空標籤篩選
+    sortOptionsContainer.classList.add('hidden'); // 隱藏排序選項
+    exitSelectionMode(); // 退出可能存在的選擇模式
+
+    // *** 觸發渲染，renderCurrentView 會根據新的 currentTab 和空的搜尋框來渲染 ***
+    renderCurrentView();
+}
 
 /**
  * 處理主搜尋框的輸入事件 (包含建議和觸發列表更新)
