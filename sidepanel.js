@@ -628,7 +628,7 @@ function renderImportExportView() {
 
     const footerHTML = `
         <footer class="plugin-footer">
-            <a href="https://example.com" target="_blank" rel="noopener noreferrer" title="點擊前往官方網站" class="footer-icon-link">
+            <a href="https://github.com/ravagerWT/AI-Prompt-Manager" target="_blank" rel="noopener noreferrer" title="點擊前往官方網站" class="footer-icon-link">
                 <img src="icons/icon16.png" alt="插件圖標" class="footer-icon">
             </a>
             <span class="footer-text">點擊左側圖標前往官方網站</span>
